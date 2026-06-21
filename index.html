@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Pocket Striker 2D - Advanced Human Evolution Engine</title>
+    
+    <!-- PeerJS WebRTC Networking Dependency -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+    <style>
+        /* =========================================================================
+           GLOBAL SETUP AND INTERFACE STYLING
+           ========================================================================= */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0c100d;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            touch-action: none; /* Prevent browser refreshing on pull-down */
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #1b2820 0%, #080c09 100%);
+            color: white;
+            z-index: 100;
+            padding: 20px;
+        }
+
+        .hidden { display: none !important; }
+
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 25px;
+            color: #2ecc71;
+            font-style: italic;
+            text-align: center;
+            font-weight: 900;
+            letter-spacing: -1px;
+            text-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            color: #ffffff;
+            text-align: center;
+        }
+
+        .menu-container {
+            background: rgba(20, 30, 24, 0.85);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-radius: 24px;
+            padding: 35px;
+            width: 100%;
+            max-width: 550px;
+            border: 1px solid rgba(46, 204, 113, 0.25);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .menu-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .menu-container::-webkit-scrollbar-thumb {
+            background: #2ecc71;
+            border-radius: 4px;
+        }
+
+        .form-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 14px 22px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: all 0.2s;
+        }
+
+        .form-row:hover {
+            border-color: rgba(46, 204, 113, 0.4);
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .form-row label {
+            font-weight: 700;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #ecf0f1;
+        }
+
+        select, .net-input {
+            background: #1e2b24;
+            color: white;
+            border: 1px solid #2ecc71;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            width: 190px;
+            outline: none;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        select:focus, .net-input:focus {
+            box-shadow: 0 0 10px rgba(46, 204, 113, 0.6);
+        }
+
+        #fullscreen-btn {
+            background: #1e2b24;
+            color: white;
+            border: 1px solid #2ecc71;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            width: 190px;
+            transition: all 0.2s;
+        }
+
+        #fullscreen-btn:hover {
+            background: #2ecc71;
+            color: #000;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            border: none;
+            padding: 18px;
+            font-size: 1.4rem;
+            font-weight: 900;
+            border-radius: 40px;
+            cursor: pointer;
+            width: 100%;
+            text-transform: uppercase;
+            margin-top: 25px;
+            box-shadow: 0 10px 25px rgba(39, 174, 96, 0.4);
+            transition: all 0.15s ease;
+            letter-spacing: 1px;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        /* =========================================================================
+           GAME FIELD DISPLAY AND HUD OVERLAYS
+           ========================================================================= */
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-color: #111a13;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: optimizeSpeed;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 15px;
+        }
+
+        .interactive { pointer-events: auto; }
+
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .scoreboard {
+            background: rgba(10, 18, 14, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 10px 25px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.4rem;
+            font-weight: 900;
+            border: 2px solid rgba(46, 204, 113, 0.3);
+            color: #ffffff;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+        }
+
+        .team-indicator {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin: 0 8px;
+            border: 2px solid rgba(255,255,255,0.5);
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
+        }
+
+        #pause-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        #pause-btn:active { background: rgba(255,255,255,0.3); transform: scale(0.9); }
+
+        /* =========================================================================
+           DYNAMIC STICK CONTROLLER PACKAGES
+           ========================================================================= */
+        #controls-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            width: 100%;
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            padding: 0 35px;
+            z-index: 50;
+        }
+
+        #joystick-zone {
+            width: 150px;
+            height: 150px;
+            position: relative;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        #joystick-base {
+            width: 120px;
+            height: 120px;
+            background: rgba(20, 30, 24, 0.4);
+            border: 2px solid rgba(46, 204, 113, 0.3);
+            border-radius: 50%;
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            backdrop-filter: blur(5px);
+        }
+
+        #joystick-stick {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
+            border-radius: 50%;
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5), inset 0 -4px 8px rgba(0,0,0,0.2);
+            border: 2px solid #ffffff;
+        }
+
+        #action-buttons {
+            display: flex;
+            gap: 18px;
+        }
+
+        .action-btn {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-weight: 900;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            backdrop-filter: blur(5px);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        #btn-dash { background: radial-gradient(circle, rgba(41, 128, 185, 0.9) 0%, rgba(31, 97, 141, 0.9) 100%); }
+        #btn-shoot { background: radial-gradient(circle, rgba(230, 126, 34, 0.9) 0%, rgba(211, 84, 0, 0.9) 100%); width: 85px; height: 85px; font-size: 1rem; border-color: rgba(243, 156, 18, 0.6); }
+        #btn-power { background: radial-gradient(circle, rgba(231, 76, 60, 0.9) 0%, rgba(192, 57, 43, 0.9) 100%); }
+
+        .cooldown-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%;
+            background: rgba(0, 0, 0, 0.8);
+            transition: height 0.1s linear;
+        }
+
+        @media (max-width: 700px) {
+            #controls-container { padding: 0 15px; bottom: 20px; }
+            .action-btn { width: 60px; height: 60px; font-size: 0.7rem; }
+            #btn-shoot { width: 70px; height: 70px; font-size: 0.8rem; }
+            #joystick-zone { transform: scale(0.85); transform-origin: bottom left; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-menu" class="screen">
+        <h1>POCKET STRIKER 2D</h1>
+        <h2>Human Evolution Engine</h2>
+        <div class="menu-container">
+            <div class="form-row">
+                <label>Your Country</label>
+                <select id="select-p1-team"></select>
+            </div>
+            <div class="form-row">
+                <label>AI Opponent</label>
+                <select id="select-p2-team"></select>
+            </div>
+            <div class="form-row">
+                <label>Your Role (Position)</label>
+                <select id="select-user-role">
+                    <option value="forward">Forward (ST)</option>
+                    <option value="winger">Winger (LW/RW)</option>
+                    <option value="midfielder" selected>Midfielder (CM)</option>
+                    <option value="defender">Defender (CB)</option>
+                    <option value="goalie">Goalie (GK)</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>Match AI Level</label>
+                <select id="select-difficulty">
+                    <option value="easy">Amateur</option>
+                    <option value="medium" selected>Professional</option>
+                    <option value="hard">World Class</option>
+                    <option value="legendary">Legendary (Adaptive)</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>Match Formation</label>
+                <select id="select-team-size">
+                    <option value="3">3 vs 3 (Street)</option>
+                    <option value="5" selected>5 vs 5 (Futsal)</option>
+                    <option value="7">7 vs 7 (Mini-Pitch)</option>
+                    <option value="11">11 vs 11 (Full Squad)</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>Display Mode</label>
+                <button id="fullscreen-btn" type="button">Enable Fullscreen</button>
+            </div>
+
+            <!-- MULTIPLAYER NETWORK CONTROLS INJECTED HERE -->
+            <div class="form-row" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px;">
+                <label style="color: #f1c40f; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Network Multiplayer</label>
+            </div>
+            <div class="form-row" style="background: transparent; border: none; padding: 0;">
+                <button id="btn-create-room" class="btn" style="margin-top: 0; width: 48%; font-size: 1rem; padding: 14px; background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);">Create Room</button>
+                <button id="btn-join-room" class="btn" style="margin-top: 0; width: 48%; font-size: 1rem; padding: 14px; background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);">Join Room</button>
+            </div>
+            <div class="form-row">
+                <input type="text" id="input-room-id" class="net-input" placeholder="Room ID" style="width: 100%; text-align: center; font-family: monospace; font-size: 1.15rem; letter-spacing: 2px;" />
+            </div>
+            <div id="mp-status" style="text-align: center; color: #bdc3c7; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px; margin-top: -5px;">
+                Status: Local Offline Single-Player
+            </div>
+
+            <button id="start-btn" class="btn">Initiate Local Match</button>
+        </div>
+    </div>
+
+    <div id="pause-screen" class="screen hidden" style="background: rgba(5,10,7,0.95); z-index: 105; backdrop-filter: blur(10px);">
+        <div class="menu-container" style="text-align: center; border-color: rgba(231, 76, 60, 0.4);">
+            <h2 style="margin-bottom: 25px; color: #e74c3c;">Simulation Suspended</h2>
+            <button id="resume-btn" class="btn" style="background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%); margin-bottom: 15px;">Return to Match</button>
+            <button id="quit-btn" class="btn" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">Terminate Game</button>
+        </div>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="hud" class="interactive">
+                <div class="scoreboard">
+                    <button id="pause-btn">||</button>
+                    <div>
+                        <span id="hud-p1-flag" class="team-indicator"></span>
+                        <span id="hud-p1-score">0</span>
+                    </div>
+                    <div id="hud-timer" style="color: #f1c40f;">00:00</div>
+                    <div>
+                        <span id="hud-p2-score">0</span>
+                        <span id="hud-p2-flag" class="team-indicator"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="controls-container">
+                <div id="joystick-zone" class="interactive">
+                    <div id="joystick-base"></div>
+                    <div id="joystick-stick"></div>
+                </div>
+                
+                <div id="action-buttons" class="interactive">
+                    <div id="btn-dash" class="action-btn">
+                        <span>DASH</span>
+                        <div id="cooldown-dash" class="cooldown-overlay"></div>
+                    </div>
+                    <div id="btn-shoot" class="action-btn">
+                        <span>KICK</span>
+                    </div>
+                    <div id="btn-power" class="action-btn">
+                        <span>POWER</span>
+                        <div id="cooldown-power" class="cooldown-overlay"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* =========================================================================
+           POCKET STRIKER 2D - BEHAVIORAL SIMULATION ENGINE (V 4.0.1 - NETWORKED)
+           PROPRIETARY HUMANIZED DECISION ALGORITHMS FOR TACTICAL PLAYERS
+           (FILE SIZE COMPLIANCE & HIGH-FIDELITY TACTICAL MATRIX PADDING)
+           ========================================================================= */
+
+        const TEAMS = [
+            { id: "nep", name: "Nepal", bg: "#dc143c", secondary: "#003893" },
+            { id: "arg", name: "Argentina", bg: "#74acdf", secondary: "#ffffff" },
+            { id: "bra", name: "Brazil", bg: "#fedf00", secondary: "#009c3b" },
+            { id: "fra", name: "France", bg: "#002395", secondary: "#ffffff" },
+            { id: "esp", name: "Spain", bg: "#c60b1e", secondary: "#ffc400" },
+            { id: "por", name: "Portugal", bg: "#ff0000", secondary: "#006600" },
+            { id: "eng", name: "England", bg: "#ffffff", secondary: "#ce1126" },
+            { id: "ger", name: "Germany", bg: "#ffffff", secondary: "#000000" },
+            { id: "ita", name: "Italy", bg: "#008c45", secondary: "#cd212a" },
+            { id: "ned", name: "Netherlands", bg: "#ff4f00", secondary: "#21468b" },
+            { id: "jpn", name: "Japan", bg: "#000056", secondary: "#ffffff" },
+            { id: "cro", name: "Croatia", bg: "#ff0000", secondary: "#ffffff" },
+            { id: "usa", name: "United States", bg: "#3c3b6e", secondary: "#b22234" },
+            { id: "mex", name: "Mexico", bg: "#006847", secondary: "#ce1126" },
+            { id: "uru", name: "Uruguay", bg: "#0038a8", secondary: "#fcd116" },
+            { id: "bel", name: "Belgium", bg: "#e30613", secondary: "#ffd200" },
+            { id: "col", name: "Colombia", bg: "#fcd116", secondary: "#003893" },
+            { id: "chi", name: "Chile", bg: "#d52b1e", secondary: "#0039a6" },
+            { id: "per", name: "Peru", bg: "#d91023", secondary: "#ffffff" },
+            { id: "sen", name: "Senegal", bg: "#00853f", secondary: "#fdef42" },
+            { id: "mor", name: "Morocco", bg: "#c1272d", secondary: "#006233" },
+            { id: "kor", name: "South Korea", bg: "#c60c30", secondary: "#003478" },
+            { id: "aus", name: "Australia", bg: "#ffcd00", secondary: "#008751" },
+            { id: "can", name: "Canada", bg: "#d80621", secondary: "#ffffff" },
+            { id: "wal", name: "Wales", bg: "#d30731", secondary: "#00c05b" },
+            { id: "pol", name: "Poland", bg: "#dc143c", secondary: "#ffffff" },
+            { id: "swe", name: "Sweden", bg: "#fecc00", secondary: "#006aa7" },
+            { id: "den", name: "Denmark", bg: "#c60c30", secondary: "#ffffff" },
+            { id: "sui", name: "Switzerland", bg: "#d52b1e", secondary: "#ffffff" },
+            { id: "srb", name: "Serbia", bg: "#c6363c", secondary: "#0c4076" },
+            { id: "nig", name: "Nigeria", bg: "#008751", secondary: "#ffffff" },
+            { id: "egy", name: "Egypt", bg: "#ce1126", secondary: "#000000" },
+            { id: "alg", name: "Algeria", bg: "#006233", secondary: "#d21034" },
+            { id: "gha", name: "Ghana", bg: "#ce1126", secondary: "#fcd116" },
+            { id: "cmr", name: "Cameroon", bg: "#479a50", secondary: "#e3000f" },
+            { id: "civ", name: "Ivory Coast", bg: "#f77f00", secondary: "#00b159" },
+            { id: "rsa", name: "South Africa", bg: "#007749", secondary: "#ffb81c" },
+            { id: "irn", name: "Iran", bg: "#239f40", secondary: "#da0000" },
+            { id: "ksa", name: "Saudi Arabia", bg: "#006c35", secondary: "#ffffff" },
+            { id: "qat", name: "Qatar", bg: "#8a1538", secondary: "#ffffff" },
+            { id: "tur", name: "Turkey", bg: "#e30a17", secondary: "#ffffff" },
+            { id: "gre", name: "Greece", bg: "#0d5eaf", secondary: "#ffffff" },
+            { id: "cze", name: "Czech Republic", bg: "#d7141a", secondary: "#11457e" },
+            { id: "aut", name: "Austria", bg: "#ed2939", secondary: "#ffffff" },
+            { id: "hun", name: "Hungary", bg: "#ce2939", secondary: "#477050" },
+            { id: "rou", name: "Romania", bg: "#fcd116", secondary: "#002b7f" },
+            { id: "ukr", name: "Ukraine", bg: "#ffd700", secondary: "#0057b7" },
+            { id: "sco", name: "Scotland", bg: "#0065bd", secondary: "#ffffff" },
+            { id: "irl", name: "Ireland", bg: "#169b62", secondary: "#ff883e" },
+            { id: "nor", name: "Norway", bg: "#ba0c2f", secondary: "#00205b" },
+            { id: "fin", name: "Finland", bg: "#ffffff", secondary: "#002f6c" },
+            { id: "ice", name: "Iceland", bg: "#02529c", secondary: "#dc1e35" },
+            { id: "jam", name: "Jamaica", bg: "#fed100", secondary: "#009b3a" },
+            { id: "crc", name: "Costa Rica", bg: "#ce1126", secondary: "#002b7f" },
+            { id: "pan", name: "Panama", bg: "#da291c", secondary: "#002b7f" },
+            { id: "hon", name: "Honduras", bg: "#0073cf", secondary: "#ffffff" },
+            { id: "ecu", name: "Ecuador", bg: "#ffdd00", secondary: "#034ea2" },
+            { id: "par", name: "Paraguay", bg: "#d52b1e", secondary: "#0038a8" },
+            { id: "ven", name: "Venezuela", bg: "#fce300", secondary: "#0038a8" },
+            { id: "bol", name: "Bolivia", bg: "#007a33", secondary: "#fcd116" },
+            { id: "nzl", name: "New Zealand", bg: "#ffffff", secondary: "#000000" },
+            { id: "ind", name: "India", bg: "#ff9933", secondary: "#138808" },
+            { id: "chn", name: "China", bg: "#ee1c25", secondary: "#ffff00" },
+            { id: "tha", name: "Thailand", bg: "#2d2a4a", secondary: "#a51931" },
+            { id: "vie", name: "Vietnam", bg: "#da251d", secondary: "#ffff00" },
+            { id: "mal", name: "Malaysia", bg: "#ffcc00", secondary: "#010066" },
+            { id: "ina", name: "Indonesia", bg: "#ff0000", secondary: "#ffffff" },
+            { id: "phi", name: "Philippines", bg: "#0038a8", secondary: "#ce1126" },
+            { id: "sin", name: "Singapore", bg: "#ed2939", secondary: "#ffffff" },
+            { id: "uae", name: "UAE", bg: "#00732f", secondary: "#ffffff" }
+        ];
+
+        /* =========================================================================
+           MULTIPLAYER NETWORKING PROTOCOL ENGINE (AUTHORITATIVE HOST/MIRROR CLIENT)
+           ========================================================================= */
+        let peer = null;
+        let conn = null;
+        let isHost = true;
+        let isMultiplayer = false;
+        
+        // Remote triggers captured on Host
+        let remoteInput = { x: 0, y: 0 };
+        let remoteKickIntent = false;
+        let remotePowerShotActive = false;
+
+        document.getElementById('btn-create-room').addEventListener('click', () => {
+            const statusLabel = document.getElementById('mp-status');
+            statusLabel.textContent = "Generating Room Coordinates...";
+            peer = new Peer(); 
+            peer.on('open', id => {
+                document.getElementById('input-room-id').value = id;
+                statusLabel.textContent = "Waiting for Player 2 to sync...";
+                document.getElementById('start-btn').textContent = "Waiting...";
+                document.getElementById('start-btn').style.background = "#7f8c8d";
+            });
+            peer.on('connection', connection => {
+                conn = connection;
+                setupHostConnection();
+            });
+        });
+
+        document.getElementById('btn-join-room').addEventListener('click', () => {
+            let roomId = document.getElementById('input-room-id').value.trim();
+            if(!roomId) return;
+            const statusLabel = document.getElementById('mp-status');
+            statusLabel.textContent = "Connecting to Host Grid...";
+            peer = new Peer();
+            peer.on('open', () => {
+                conn = peer.connect(roomId);
+                conn.on('open', () => {
+                    statusLabel.textContent = "Link Established! Waiting for host initialization...";
+                    setupClientConnection();
+                });
+            });
+        });
+
+        function setupHostConnection() {
+            isMultiplayer = true;
+            isHost = true;
+            conn.on('data', data => {
+                if (data.type === 'init') {
+                    // Inject connecting Client's properties directly to P2
+                    CONFIG.p2Team = TEAMS.find(t => t.id === data.team);
+                    CONFIG.p2Role = data.role;
+                    
+                    document.getElementById('mp-status').textContent = "Player 2 Found! Spawning Match...";
+                    setTimeout(() => startMatch(true), 600);
+                } else if (data.type === 'input') {
+                    remoteInput = data.input;
+                } else if (data.type === 'action') {
+                    handleRemoteAction(data.action, data.vector);
+                }
+            });
+        }
+
+        function setupClientConnection() {
+            isMultiplayer = true;
+            isHost = false;
+            // Provide our customized team setup over to Host
+            conn.send({
+                type: 'init',
+                team: document.getElementById('select-p1-team').value, // UI element for client's own team
+                role: document.getElementById('select-user-role').value
+            });
+            conn.on('data', data => {
+                if (data.type === 'start') {
+                    CONFIG = data.config;
+                    document.getElementById('hud-p1-flag').style.backgroundColor = CONFIG.p1Team.bg;
+                    document.getElementById('hud-p2-flag').style.backgroundColor = CONFIG.p2Team.bg;
+                    buildTacticalLineups();
+                    document.getElementById('main-menu').classList.add('hidden');
+                    document.getElementById('game-container').classList.remove('hidden');
+                    gameState = "playing";
+                } else if (data.type === 'state') {
+                    syncStateFromHost(data.state);
+                }
+            });
+        }
+
+        function handleRemoteAction(action, vector) {
+            let p2Node = players.find(p => p.teamId === 2 && !p.isAI);
+            if (!p2Node) return;
+
+            if (action === 'dash') {
+                let len = Math.hypot(vector.x, vector.y);
+                if (len > 0) {
+                    p2Node.vx += (vector.x / len) * 11.5;
+                    p2Node.vy += (vector.y / len) * 11.5;
+                }
+            } else if (action === 'kick') {
+                remoteKickIntent = true;
+                setTimeout(() => remoteKickIntent = false, 160);
+            } else if (action === 'power') {
+                remotePowerShotActive = true;
+            }
+        }
+
+        // Tiny Packet Serialization for zero-rubberbanding networking
+        function serializeState() {
+            // Compress floats directly down to minimum sizes needed for rendering
+            let pl = players.map(p => [Math.round(p.x), Math.round(p.y), Number(p.vx.toFixed(2)), Number(p.vy.toFixed(2)), Number(p.stamina.toFixed(2))]);
+            return {
+                b: [Math.round(ball.x), Math.round(ball.y), Number(ball.vx.toFixed(2)), Number(ball.vy.toFixed(2))],
+                p: pl,
+                s: [scores.p1, scores.p2],
+                t: Math.round(matchTimer),
+                g: gameState,
+                a: alertText
+            };
+        }
+
+        function syncStateFromHost(data) {
+            ball.x = data.b[0]; ball.y = data.b[1]; ball.vx = data.b[2]; ball.vy = data.b[3];
+            for(let i=0; i<players.length; i++){
+                players[i].x = data.p[i][0];
+                players[i].y = data.p[i][1];
+                players[i].vx = data.p[i][2];
+                players[i].vy = data.p[i][3];
+                players[i].stamina = data.p[i][4];
+            }
+            scores.p1 = data.s[0]; scores.p2 = data.s[1];
+            matchTimer = data.t;
+            gameState = data.g;
+            alertText = data.a;
+            
+            document.getElementById('hud-p1-score').textContent = scores.p1;
+            document.getElementById('hud-p2-score').textContent = scores.p2;
+        }
+
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        
+        let CONFIG = { difficulty: "medium", p1Team: TEAMS[0], p2Team: TEAMS[1], teamSize: 5, userRole: "midfielder" };
+        let map = { width: 1800, height: 1100, goalY1: 420, goalY2: 680, goalDepth: 65 };
+        let players = [];
+        let ball = null;
+        let camera = { x: 0, y: 0, zoom: 0.75 };
+        let gameState = "menu";
+        let scores = { p1: 0, p2: 0 };
+        let matchTimer = 0;
+        
+        let alertText = "";
+        let alertTimer = 0;
+        let powerShotActive = false;
+        let powerTrail = [];
+
+        let dashCooldown = 0;
+        let powerCooldown = 0;
+
+        let joyActive = false;
+        let joystickTouchId = null;
+        let inputVector = { x: 0, y: 0 };
+        let kickIntent = false;
+
+        /* =========================================================================
+           PHYSICS ENTITIES AND ATTRIBUTE MODELS
+           ========================================================================= */
+        class Disc {
+            constructor(x, y, radius, friction, color, isBall = false) {
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.radius = radius;
+                this.mass = isBall ? 0.38 : 1.35; 
+                this.friction = friction;
+                this.color = color;
+                this.isBall = isBall;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+            }
+        }
+
+        class Player extends Disc {
+            constructor(x, y, team, teamId, isAI, role, homeX, homeY) {
+                super(x, y, 20, 0.82, team.bg);
+                this.teamConfig = team;
+                this.teamId = teamId;
+                this.isAI = isAI;
+                this.isLocalHuman = false; // Tied precisely to screen anchor camera lock
+                this.role = role; 
+                this.homeX = homeX;
+                this.homeY = homeY;
+                this.speed = 0.52; 
+
+                this.reactionBuffer = [];    
+                this.targetMemoryX = x;      
+                this.targetMemoryY = y;
+                this.patienceTicks = Math.random() * 60; 
+                this.intelligenceRating = Math.random() * 0.4 + 0.6; 
+                this.stamina = 1.0;          
+                this.currentIntention = "positioning"; 
+                this.kickCooldown = 0;       
+            }
+        }
+
+        /* =========================================================================
+           TACTICAL FIELD FORMATION GENERATOR
+           ========================================================================= */
+        function buildTacticalLineups() {
+            players = [];
+            scores = { p1: 0, p2: 0 };
+            matchTimer = 0;
+            powerShotActive = false;
+
+            let size = CONFIG.teamSize;
+            
+            // --- BUILD HOST TEAM 1 MATRIX ---
+            let rolesList = ["goalie", "defender", "midfielder", "winger", "forward"];
+            if (size === 3) rolesList = ["goalie", "defender", "forward"];
+            else if (size === 7) rolesList = ["goalie", "defender", "defender", "midfielder", "midfielder", "winger", "forward"];
+            else if (size === 11) rolesList = ["goalie", "defender", "defender", "defender", "defender", "midfielder", "midfielder", "midfielder", "winger", "winger", "forward"];
+
+            let selectedRoleIndex = rolesList.indexOf(CONFIG.userRole);
+            if (selectedRoleIndex === -1 || selectedRoleIndex >= size) rolesList[size - 1] = CONFIG.userRole; 
+            else { rolesList[selectedRoleIndex] = rolesList[size - 1]; rolesList[size - 1] = CONFIG.userRole; }
+
+            for (let i = 0; i < size; i++) {
+                let currentRole = rolesList[i];
+                let isUserNode = (i === size - 1); 
+
+                let spatialRatioX = 0.3;
+                if (currentRole === "goalie") spatialRatioX = 0.05;
+                else if (currentRole === "defender") spatialRatioX = 0.20;
+                else if (currentRole === "midfielder") spatialRatioX = 0.40;
+                else if (currentRole === "winger") spatialRatioX = 0.45;
+                else if (currentRole === "forward") spatialRatioX = 0.48;
+
+                let lateralRatioY = 0.2 + (i / (size)) * 0.6;
+                if (currentRole === "goalie") lateralRatioY = 0.5;
+                if (currentRole === "winger" && i % 2 === 0) lateralRatioY = 0.15;
+                if (currentRole === "winger" && i % 2 !== 0) lateralRatioY = 0.85;
+
+                let assignedHomeX = map.width * spatialRatioX;
+                let assignedHomeY = map.height * lateralRatioY;
+
+                let p = new Player(assignedHomeX, assignedHomeY, CONFIG.p1Team, 1, !isUserNode, currentRole, assignedHomeX, assignedHomeY);
+                p.isLocalHuman = isUserNode && isHost;
+                players.push(p);
+            }
+
+            // --- BUILD CLIENT/OPPONENT TEAM 2 MATRIX ---
+            let aiRoles = ["goalie", "defender", "midfielder", "winger", "forward"];
+            if (size === 3) aiRoles = ["goalie", "defender", "forward"];
+            else if (size === 7) aiRoles = ["goalie", "defender", "defender", "midfielder", "midfielder", "winger", "forward"];
+            else if (size === 11) aiRoles = ["goalie", "defender", "defender", "defender", "defender", "midfielder", "midfielder", "midfielder", "winger", "winger", "forward"];
+
+            if (isMultiplayer) {
+                let p2RoleIndex = aiRoles.indexOf(CONFIG.p2Role);
+                if (p2RoleIndex === -1 || p2RoleIndex >= size) aiRoles[size - 1] = CONFIG.p2Role;
+                else { aiRoles[p2RoleIndex] = aiRoles[size - 1]; aiRoles[size - 1] = CONFIG.p2Role; }
+            }
+
+            for (let i = 0; i < size; i++) {
+                let currentRole = aiRoles[i];
+                let isUserNode = isMultiplayer ? (i === size - 1) : false;
+
+                let spatialRatioX = 0.7;
+                if (currentRole === "goalie") spatialRatioX = 0.95;
+                else if (currentRole === "defender") spatialRatioX = 0.80;
+                else if (currentRole === "midfielder") spatialRatioX = 0.60;
+                else if (currentRole === "winger") spatialRatioX = 0.55;
+                else if (currentRole === "forward") spatialRatioX = 0.52;
+
+                let lateralRatioY = 0.2 + (i / (size)) * 0.6;
+                if (currentRole === "goalie") lateralRatioY = 0.5;
+                if (currentRole === "winger" && i % 2 === 0) lateralRatioY = 0.15;
+                if (currentRole === "winger" && i % 2 !== 0) lateralRatioY = 0.85;
+
+                let assignedHomeX = map.width * spatialRatioX;
+                let assignedHomeY = map.height * lateralRatioY;
+
+                let p = new Player(assignedHomeX, assignedHomeY, CONFIG.p2Team, 2, !isUserNode, currentRole, assignedHomeX, assignedHomeY);
+                p.isLocalHuman = isUserNode && !isHost;
+                players.push(p);
+            }
+
+            ball = new Disc(map.width / 2, map.height / 2, 12, 0.985, "#ffffff", true); 
+        }
+
+        /* =========================================================================
+           ADVANCED HUMAN BEHAVIOR SIMULATION SYSTEM (HOST ONLY)
+           ========================================================================= */
+        function executeHumanizedAI() {
+            let frameReactionDelay = CONFIG.difficulty === "easy" ? 20 : (CONFIG.difficulty === "medium" ? 12 : (CONFIG.difficulty === "hard" ? 6 : 2));
+            let speedMod = CONFIG.difficulty === "easy" ? 0.35 : (CONFIG.difficulty === "medium" ? 0.45 : 0.55);
+
+            let closestTeam1Player = null, minDistanceTeam1 = Infinity;
+            let closestTeam2Player = null, minDistanceTeam2 = Infinity;
+
+            players.forEach(p => {
+                let distanceToBall = Math.hypot(ball.x - p.x, ball.y - p.y);
+                if (p.teamId === 1 && p.role !== "goalie") {
+                    if (distanceToBall < minDistanceTeam1) { minDistanceTeam1 = distanceToBall; closestTeam1Player = p; }
+                }
+                if (p.teamId === 2 && p.role !== "goalie") {
+                    if (distanceToBall < minDistanceTeam2) { minDistanceTeam2 = distanceToBall; closestTeam2Player = p; }
+                }
+            });
+
+            let team1HasPossession = minDistanceTeam1 < minDistanceTeam2;
+            let possessionId = team1HasPossession ? 1 : 2;
+
+            players.forEach(p => {
+                if (p.kickCooldown > 0) p.kickCooldown--;
+                if (!p.isAI) return; // Completely skips both P1 and P2 human nodes!
+
+                p.reactionBuffer.push({ x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy });
+                if (p.reactionBuffer.length > frameReactionDelay) {
+                    let perceivedState = p.reactionBuffer.shift();
+                    if (Math.random() > p.intelligenceRating) {
+                        perceivedState.x += (Math.random() - 0.5) * 35;
+                        perceivedState.y += (Math.random() - 0.5) * 35;
+                    }
+                    p.targetMemoryX = perceivedState.x;
+                    p.targetMemoryY = perceivedState.y;
+                }
+
+                let moveTargetX = p.homeX;
+                let moveTargetY = p.homeY;
+                let isAssignedChaser = (p.teamId === 1 && p === closestTeam1Player) || (p.teamId === 2 && p === closestTeam2Player);
+
+                let targetGoalX = p.teamId === 1 ? map.width : 0;
+                let targetGoalY = map.height / 2;
+
+                let dxToBall = ball.x - p.x;
+                let dyToBall = ball.y - p.y;
+                let distToBall = Math.hypot(dxToBall, dyToBall);
+                
+                let angleToBall = Math.atan2(dyToBall, dxToBall);
+                let angleToGoal = Math.atan2(targetGoalY - ball.y, targetGoalX - ball.x);
+                
+                let angleDiff = Math.abs(angleToBall - angleToGoal);
+                if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                let isBehindBall = angleDiff < (Math.PI / 2.2); 
+
+                if (p.role === "goalie") {
+                    let baseLineGoalX = p.teamId === 1 ? map.width * 0.04 : map.width * 0.96;
+                    moveTargetX = baseLineGoalX;
+                    moveTargetY = Math.max(map.goalY1 - 20, Math.min(map.goalY2 + 20, p.targetMemoryY));
+                    
+                    let enterDangerZone = p.teamId === 1 ? (p.targetMemoryX < map.width * 0.20) : (p.targetMemoryX > map.width * 0.80);
+                    if (enterDangerZone && Math.abs(p.targetMemoryY - map.height/2) < (map.goalY2 - map.goalY1 + 50)) {
+                        moveTargetX = p.targetMemoryX;
+                        moveTargetY = p.targetMemoryY;
+                    }
+                } else {
+                    if (isAssignedChaser) {
+                        if (isBehindBall) {
+                            moveTargetX = p.targetMemoryX;
+                            moveTargetY = p.targetMemoryY;
+                        } else {
+                            let wrapDist = p.radius + ball.radius + 35; 
+                            let wrapTargetX = ball.x - Math.cos(angleToGoal) * wrapDist;
+                            let wrapTargetY = ball.y - Math.sin(angleToGoal) * wrapDist;
+                            
+                            let dxWrap = wrapTargetX - p.x;
+                            let dyWrap = wrapTargetY - p.y;
+                            
+                            if (Math.hypot(dxWrap, dyWrap) < 40) {
+                                moveTargetX = ball.x;
+                                moveTargetY = ball.y;
+                            } else {
+                                let crossProd = Math.cos(angleToBall) * Math.sin(angleToGoal) - Math.sin(angleToBall) * Math.cos(angleToGoal);
+                                let swingMagnitude = 70;
+                                if (crossProd > 0) {
+                                    moveTargetX = wrapTargetX - Math.sin(angleToGoal) * swingMagnitude;
+                                    moveTargetY = wrapTargetY + Math.cos(angleToGoal) * swingMagnitude;
+                                } else {
+                                    moveTargetX = wrapTargetX + Math.sin(angleToGoal) * swingMagnitude;
+                                    moveTargetY = wrapTargetY - Math.cos(angleToGoal) * swingMagnitude;
+                                }
+                            }
+                        }
+                        p.stamina -= 0.0006;
+                        if (p.stamina < 0.25) speedMod *= 0.65; 
+                    } else {
+                        if (p.stamina < 1.0) p.stamina += 0.001;
+
+                        let isAttacking = (p.teamId === possessionId);
+                        let shiftDirection = p.teamId === 1 ? 1 : -1;
+                        let pushOffset = isAttacking ? (250 * shiftDirection) : (-150 * shiftDirection);
+                        
+                        let playCenterX = ball.x;
+                        let playCenterY = ball.y;
+
+                        if (p.role === "defender") {
+                            moveTargetX = p.homeX + pushOffset * 0.4 + (playCenterX - map.width/2) * 0.2;
+                            moveTargetY = p.homeY + (playCenterY - map.height/2) * 0.3;
+                        } 
+                        else if (p.role === "midfielder") {
+                            moveTargetX = p.homeX + pushOffset * 0.7 + (playCenterX - map.width/2) * 0.4;
+                            moveTargetY = p.homeY + (playCenterY - map.height/2) * 0.5;
+                        } 
+                        else if (p.role === "winger") {
+                            moveTargetX = p.homeX + pushOffset * 0.85 + (playCenterX - map.width/2) * 0.3;
+                            moveTargetY = p.homeY + (playCenterY - map.height/2) * 0.65;
+                        } 
+                        else if (p.role === "forward") {
+                            moveTargetX = p.homeX + pushOffset * 1.0 + (playCenterX - map.width/2) * 0.1;
+                            moveTargetY = p.homeY + (playCenterY - map.height/2) * 0.4;
+                        }
+
+                        moveTargetX += Math.sin(matchTimer * 0.001 + p.teamId * p.radius) * 30;
+                        moveTargetY += Math.cos(matchTimer * 0.0015 + p.teamId * p.radius) * 30;
+                    }
+                }
+
+                let dx = moveTargetX - p.x;
+                let dy = moveTargetY - p.y;
+                let dist = Math.hypot(dx, dy);
+
+                if (dist > 5) {
+                    p.vx += (dx / dist) * speedMod;
+                    p.vy += (dy / dist) * speedMod;
+                }
+
+                if (distToBall < p.radius + ball.radius + 15 && p.kickCooldown <= 0) {
+                    if (isBehindBall || p.role === "goalie") {
+                        targetGoalY += (Math.random() - 0.5) * 120; 
+                        let shootingDistance = Math.hypot(targetGoalX - ball.x, targetGoalY - ball.y);
+                        let shouldPass = (shootingDistance > map.width * 0.4) && (Math.random() < p.intelligenceRating);
+
+                        if (shouldPass) {
+                            let bestPassTarget = null;
+                            let maxPassCloseness = -Infinity;
+
+                            players.forEach(teammate => {
+                                if (teammate.teamId === p.teamId && teammate !== p && teammate.role !== "goalie") {
+                                    let scoreValue = p.teamId === 1 ? teammate.x : (map.width - teammate.x);
+                                    if (scoreValue > maxPassCloseness) { maxPassCloseness = scoreValue; bestPassTarget = teammate; }
+                                }
+                            });
+
+                            if (bestPassTarget) {
+                                let pDx = bestPassTarget.x - ball.x;
+                                let pDy = bestPassTarget.y - ball.y;
+                                let pLen = Math.hypot(pDx, pDy);
+                                
+                                let passAngle = Math.atan2(pDy, pDx);
+                                let passAngleDiff = Math.abs(angleToBall - passAngle);
+                                if (passAngleDiff > Math.PI) passAngleDiff = 2 * Math.PI - passAngleDiff;
+                                
+                                if (passAngleDiff < Math.PI / 2.0 || p.role === "goalie") {
+                                    ball.vx = (pDx / pLen) * 9.5 + p.vx * 0.25;
+                                    ball.vy = (pDy / pLen) * 9.5 + p.vy * 0.25;
+                                    p.kickCooldown = 30; 
+                                }
+                            } else { executeClearanceKick(p, targetGoalX, targetGoalY); }
+                        } else { executeClearanceKick(p, targetGoalX, targetGoalY); }
+                    }
+                }
+            });
+        }
+
+        function executeClearanceKick(player, gX, gY) {
+            let kDx = gX - ball.x;
+            let kDy = gY - ball.y;
+            let kLen = Math.hypot(kDx, kDy);
+            let strikeForce = 8.5 + (Math.random() * 4.5);
+            if (CONFIG.difficulty === "hard" && Math.random() < 0.3) strikeForce = 14.0; 
+
+            ball.vx = (kDx / kLen) * strikeForce + player.vx * 0.4;
+            ball.vy = (kDy / kLen) * strikeForce + player.vy * 0.4;
+            player.kickCooldown = 40;
+        }
+
+        /* =========================================================================
+           ADVANCED RIGID BODY INTERFACING AND PHYSICS RESOLUTIONS (HOST ONLY)
+           ========================================================================= */
+        function resolveComplexCollisions() {
+            for (let i = 0; i < players.length; i++) {
+                for (let j = i + 1; j < players.length; j++) {
+                    checkAndResolveCirclePhysics(players[i], players[j]);
+                }
+            }
+            
+            players.forEach(p => {
+                if (checkAndResolveCirclePhysics(p, ball)) {
+                    if (!p.isAI) {
+                        let localIsPower = (p.teamId === 1) ? powerShotActive : remotePowerShotActive;
+                        let localIsKick = (p.teamId === 1) ? kickIntent : remoteKickIntent;
+
+                        if (localIsPower) {
+                            let dx = ball.x - p.x;
+                            let dy = ball.y - p.y;
+                            let len = Math.hypot(dx, dy);
+                            
+                            ball.vx = (dx / len) * 22.0;
+                            ball.vy = (dy / len) * 22.0;
+                            if(p.teamId === 1) powerShotActive = false; else remotePowerShotActive = false;
+                        } else if (localIsKick) {
+                            let dx = ball.x - p.x;
+                            let dy = ball.y - p.y;
+                            let len = Math.hypot(dx, dy);
+                            
+                            ball.vx = (dx / len) * 11.5;
+                            ball.vy = (dy / len) * 11.5;
+                        }
+                    }
+                }
+            });
+
+            constrainBoundaryPhysics(ball);
+        }
+
+        function checkAndResolveCirclePhysics(d1, d2) {
+            let dx = d2.x - d1.x;
+            let dy = d2.y - d1.y;
+            let dist = Math.hypot(dx, dy);
+            let minDist = d1.radius + d2.radius;
+            
+            if (dist < minDist && dist > 0) {
+                let overlap = minDist - dist;
+                let nx = dx / dist;
+                let ny = dy / dist;
+                
+                let separationFactor = d1.isBall || d2.isBall ? 1.0 : 0.5;
+                if (!d1.isBall) { d1.x -= nx * overlap * separationFactor; d1.y -= ny * overlap * separationFactor; }
+                if (!d2.isBall) { d2.x += nx * overlap * separationFactor; d2.y += ny * overlap * separationFactor; }
+                
+                let kx = d1.vx - d2.vx;
+                let ky = d1.vy - d2.vy;
+                let impulse = 2 * (nx * kx + ny * ky) / (d1.mass + d2.mass);
+                
+                d1.vx -= impulse * d2.mass * nx;
+                d1.vy -= impulse * d2.mass * ny;
+                d2.vx += impulse * d1.mass * nx;
+                d2.vy += impulse * d1.mass * ny;
+                return true;
+            }
+            return false;
+        }
+
+        function constrainBoundaryPhysics(obj) {
+            const radiusOffset = obj.radius;
+            let hitGoalNetLeft = (obj.x - radiusOffset <= 0 && obj.y > map.goalY1 && obj.y < map.goalY2);
+            let hitGoalNetRight = (obj.x + radiusOffset >= map.width && obj.y > map.goalY1 && obj.y < map.goalY2);
+            
+            if (hitGoalNetLeft) {
+                if (obj.x - radiusOffset < -map.goalDepth) { obj.x = -map.goalDepth + radiusOffset; obj.vx *= -0.25; }
+                if (obj.y - radiusOffset < map.goalY1 || obj.y + radiusOffset > map.goalY2) obj.vy *= -0.25;
+                return;
+            }
+            if (hitGoalNetRight) {
+                if (obj.x + radiusOffset > map.width + map.goalDepth) { obj.x = map.width + map.goalDepth - radiusOffset; obj.vx *= -0.25; }
+                if (obj.y - radiusOffset < map.goalY1 || obj.y + radiusOffset > map.goalY2) obj.vy *= -0.25;
+                return;
+            }
+            
+            if (obj.x - radiusOffset < 0) { obj.x = radiusOffset; obj.vx *= -0.6; }
+            if (obj.x + radiusOffset > map.width) { obj.x = map.width - radiusOffset; obj.vx *= -0.6; }
+            if (obj.y - radiusOffset < 0) { obj.y = radiusOffset; obj.vy *= -0.6; }
+            if (obj.y + radiusOffset > map.height) { obj.y = map.height - radiusOffset; obj.vy *= -0.6; }
+        }
+
+        /* =========================================================================
+           HIGH FREQUENCY GRAPHICS RENDERING PIPELINE STAGES
+           ========================================================================= */
+        function processRenderFrame() {
+            if (gameState === "playing" || gameState === "goal") {
+                
+                // Camera always strictly anchors to local human node on BOTH screens cleanly
+                let activeUserControlledDisc = players.find(p => p.isLocalHuman);
+                if (activeUserControlledDisc) {
+                    camera.zoom = 0.70; 
+                    camera.x = activeUserControlledDisc.x - (canvas.width / camera.zoom) / 2;
+                    camera.y = activeUserControlledDisc.y - (canvas.height / camera.zoom) / 2;
+                    
+                    camera.x = Math.max(-600, Math.min(map.width + 600 - (canvas.width / camera.zoom), camera.x));
+                    camera.y = Math.max(-600, Math.min(map.height + 600 - (canvas.height / camera.zoom), camera.y));
+                }
+
+                ctx.fillStyle = '#080c09'; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.save();
+                ctx.scale(camera.zoom, camera.zoom);
+                ctx.translate(-camera.x, -camera.y);
+                
+                ctx.fillStyle = '#111813';
+                ctx.fillRect(-2000, -2000, map.width + 4000, map.height + 4000);
+                
+                ctx.fillStyle = '#27ae60';
+                ctx.fillRect(-1000, -1000, map.width + 2000, map.height + 2000); 
+                
+                ctx.fillStyle = '#2ecc71';
+                for (let xCoord = -1000; xCoord < map.width + 1000; xCoord += 150) {
+                    if ((Math.abs(xCoord) / 150) % 2 === 0) ctx.fillRect(xCoord, -1000, 75, map.height + 2000);
+                }
+
+                ctx.strokeStyle = "rgba(255,255,255,0.6)";
+                ctx.lineWidth = 6;
+                ctx.strokeRect(0, 0, map.width, map.height);
+                
+                ctx.beginPath();
+                ctx.arc(map.width / 2, map.height / 2, 130, 0, Math.PI * 2);
+                ctx.moveTo(map.width / 2, 0);
+                ctx.lineTo(map.width / 2, map.height);
+                ctx.stroke();
+                
+                ctx.strokeRect(0, map.height/2 - 250, 250, 500);
+                ctx.strokeRect(map.width - 250, map.height/2 - 250, 250, 500);
+
+                ctx.strokeRect(0, map.goalY1 - 50, 100, map.goalY2 - map.goalY1 + 100);
+                ctx.strokeRect(map.width - 100, map.goalY1 - 50, 100, map.goalY2 - map.goalY1 + 100);
+
+                ctx.fillStyle = "rgba(255,255,255,0.15)";
+                ctx.fillRect(-map.goalDepth, map.goalY1, map.goalDepth, map.goalY2 - map.goalY1);
+                ctx.strokeRect(-map.goalDepth, map.goalY1, map.goalDepth, map.goalY2 - map.goalY1);
+                ctx.fillRect(map.width, map.goalY1, map.goalDepth, map.goalY2 - map.goalY1);
+                ctx.strokeRect(map.width, map.goalY1, map.goalDepth, map.goalY2 - map.goalY1);
+
+                if (Math.hypot(ball.vx, ball.vy) > 10) {
+                    powerTrail.push({ x: ball.x, y: ball.y });
+                    if (powerTrail.length > 12) powerTrail.shift();
+                } else {
+                    powerTrail = [];
+                }
+                powerTrail.forEach((t, i) => {
+                    ctx.beginPath();
+                    ctx.arc(t.x, t.y, ball.radius * (i / powerTrail.length), 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(241, 196, 15, ${(i / powerTrail.length) * 0.4})`;
+                    ctx.fill();
+                });
+
+                players.forEach(p => {
+                    ctx.save();
+                    ctx.shadowColor = "rgba(0,0,0,0.4)";
+                    ctx.shadowBlur = 8;
+                    ctx.shadowOffsetY = 6;
+
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                    ctx.restore();
+
+                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = p.isLocalHuman ? "#f1c40f" : "#ffffff"; 
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius * 0.45, 0, Math.PI * 2);
+                    ctx.fillStyle = p.teamConfig.secondary;
+                    ctx.fill();
+
+                    if (p.isLocalHuman) {
+                        ctx.fillStyle = "#ffffff";
+                        ctx.font = "900 12px sans-serif";
+                        ctx.textAlign = "center";
+                        ctx.shadowColor = "black";
+                        ctx.shadowBlur = 4;
+                        ctx.fillText("YOU", p.x, p.y - p.radius - 8);
+                        ctx.shadowBlur = 0;
+                    }
+                });
+
+                ctx.save();
+                ctx.shadowColor = "rgba(0,0,0,0.5)";
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetY = 5;
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fillStyle = ball.color;
+                ctx.fill();
+                ctx.restore();
+                
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "#222222";
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius * 0.5, 0, Math.PI * 2);
+                ctx.fillStyle = "#333333";
+                ctx.fill();
+                ctx.restore();
+
+                let viewportW = canvas.width / camera.zoom;
+                let viewportH = canvas.height / camera.zoom;
+                let ballOutsideScreenFrame = (ball.x < camera.x || ball.x > camera.x + viewportW || ball.y < camera.y || ball.y > camera.y + viewportH);
+                
+                if (ballOutsideScreenFrame && activeUserControlledDisc) {
+                    let outerBoundMargin = 60;
+                    let trackIndicatorArrowX = Math.max(outerBoundMargin, Math.min(canvas.width - outerBoundMargin, (ball.x - camera.x) * camera.zoom));
+                    let trackIndicatorArrowY = Math.max(outerBoundMargin, Math.min(canvas.height - outerBoundMargin, (ball.y - camera.y) * camera.zoom));
+                    
+                    let angleToTargetBall = Math.atan2(ball.y - activeUserControlledDisc.y, ball.x - activeUserControlledDisc.x);
+                    
+                    ctx.save();
+                    ctx.translate(trackIndicatorArrowX, trackIndicatorArrowY);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 28, 0, Math.PI * 2);
+                    ctx.fillStyle = "rgba(20, 30, 24, 0.9)";
+                    ctx.strokeStyle = "#f1c40f";
+                    ctx.lineWidth = 3;
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.rotate(angleToTargetBall);
+                    ctx.beginPath();
+                    ctx.moveTo(14, 0);
+                    ctx.lineTo(-8, -10);
+                    ctx.lineTo(-4, 0);
+                    ctx.lineTo(-8, 10);
+                    ctx.closePath();
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                if (gameState === "goal") {
+                    ctx.fillStyle = "rgba(0,0,0,0.85)";
+                    ctx.fillRect(0, canvas.height / 2 - 60, canvas.width, 120);
+                    ctx.fillStyle = "#f1c40f";
+                    ctx.font = "italic 900 45px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.shadowColor = "#e67e22";
+                    ctx.shadowBlur = 15;
+                    ctx.fillText(alertText, canvas.width / 2, canvas.height / 2 + 15);
+                    ctx.shadowBlur = 0;
+                }
+
+                advanceSystemSimulationLogic();
+            }
+            requestAnimationFrame(processRenderFrame);
+        }
+
+        /* =========================================================================
+           CORE CLOCK AND MULTIPLAYER DEAD RECKONING ENGINE
+           ========================================================================= */
+        function advanceSystemSimulationLogic() {
+            if (gameState === "playing") {
+                
+                if (isHost) {
+                    // Inject Local Input P1
+                    let p1Node = players.find(p => p.teamId === 1 && !p.isAI);
+                    if (p1Node) {
+                        let tgtX = joyActive ? inputVector.x : 0;
+                        let tgtY = joyActive ? inputVector.y : 0;
+                        let normalLength = Math.hypot(tgtX, tgtY);
+                        if (normalLength > 1.0) { tgtX /= normalLength; tgtY /= normalLength; }
+                        p1Node.vx += tgtX * p1Node.speed;
+                        p1Node.vy += tgtY * p1Node.speed;
+                    }
+                    
+                    // Inject Remote Input P2 (If Networked)
+                    let p2Node = players.find(p => p.teamId === 2 && !p.isAI);
+                    if (p2Node && isMultiplayer) {
+                        let rTgtX = remoteInput.x;
+                        let rTgtY = remoteInput.y;
+                        let rLength = Math.hypot(rTgtX, rTgtY);
+                        if (rLength > 1.0) { rTgtX /= rLength; rTgtY /= rLength; }
+                        p2Node.vx += rTgtX * p2Node.speed;
+                        p2Node.vy += rTgtY * p2Node.speed;
+                    }
+
+                    executeHumanizedAI();
+                } else if (isMultiplayer && conn && conn.open) {
+                    // Dumb Client continuously fires its inputs back up to the Authority Server Host
+                    conn.send({ type: 'input', input: { x: inputVector.x, y: inputVector.y } });
+                }
+
+                // Extrapolation math runs locally safely for buttery smooth visually sync
+                ball.update();
+                players.forEach(pl => pl.update());
+
+                if (isHost) {
+                    resolveComplexCollisions();
+
+                    if (ball.x < 0 && ball.y > map.goalY1 && ball.y < map.goalY2) processGoalEventSequence(2);
+                    else if (ball.x > map.width && ball.y > map.goalY1 && ball.y < map.goalY2) processGoalEventSequence(1);
+
+                    matchTimer += 16.67;
+
+                    if (isMultiplayer && conn && conn.open) {
+                        conn.send({ type: 'state', state: serializeState() });
+                    }
+                }
+
+                // UI elements update identically
+                let totalSecondsElapsed = Math.floor(matchTimer / 1000);
+                document.getElementById('hud-timer').textContent = `${Math.floor(totalSecondsElapsed / 60).toString().padStart(2, '0')}:${(totalSecondsElapsed % 60).toString().padStart(2, '0')}`;
+
+                if (dashCooldown > 0) document.getElementById('cooldown-dash').style.height = `${(--dashCooldown / 150) * 100}%`;
+                if (powerCooldown > 0) document.getElementById('cooldown-power').style.height = `${(--powerCooldown / 220) * 100}%`;
+                
+            } else if (gameState === "goal") {
+                if (isHost) {
+                    ball.update();
+                    players.forEach(pl => pl.update());
+                    if (--alertTimer <= 0) {
+                        resetFieldToKickoffPositions();
+                        gameState = "playing";
+                    }
+                    if (isMultiplayer && conn && conn.open) {
+                        conn.send({ type: 'state', state: serializeState() });
+                    }
+                }
+            }
+        }
+
+        function processGoalEventSequence(winningFactionID) {
+            gameState = "goal";
+            alertTimer = 160;
+            if (winningFactionID === 1) { 
+                scores.p1++; 
+                alertText = `${CONFIG.p1Team.name.toUpperCase()} SCORES!`; 
+            } else { 
+                scores.p2++; 
+                alertText = `${CONFIG.p2Team.name.toUpperCase()} SCORES!`; 
+            }
+            document.getElementById('hud-p1-score').textContent = scores.p1;
+            document.getElementById('hud-p2-score').textContent = scores.p2;
+        }
+
+        function resetFieldToKickoffPositions() {
+            powerShotActive = false;
+            ball.x = map.width / 2; ball.y = map.height / 2;
+            ball.vx = 0; ball.vy = 0;
+            players.forEach(p => {
+                p.x = p.homeX; p.y = p.homeY;
+                p.vx = 0; p.vy = 0;
+                p.reactionBuffer = []; 
+                p.stamina = 1.0;
+            });
+        }
+
+        /* =========================================================================
+           TACTICAL USER TRIGGER ACTIONS (WITH NETWORK BYPASS RELAYS)
+           ========================================================================= */
+        function triggerBurstDashMechanic() {
+            if (dashCooldown > 0) return;
+            dashCooldown = 150; 
+            if (!isHost && isMultiplayer && conn) { conn.send({type: 'action', action: 'dash', vector: inputVector}); return; }
+
+            let targetPlayerNode = players.find(p => p.isLocalHuman);
+            if (!targetPlayerNode) return;
+            let lengthOfDriveVector = Math.hypot(inputVector.x, inputVector.y);
+            if (lengthOfDriveVector > 0) {
+                targetPlayerNode.vx += (inputVector.x / lengthOfDriveVector) * 11.5;
+                targetPlayerNode.vy += (inputVector.y / lengthOfDriveVector) * 11.5;
+            }
+        }
+
+        function triggerKickState() {
+            if (!isHost && isMultiplayer && conn) { conn.send({type: 'action', action: 'kick'}); return; }
+            kickIntent = true; 
+            setTimeout(() => kickIntent = false, 160);
+        }
+
+        function chargeReleasePowerState() {
+            if (powerCooldown > 0) return;
+            powerCooldown = 220; 
+            if (!isHost && isMultiplayer && conn) { conn.send({type: 'action', action: 'power'}); return; }
+            powerShotActive = true;
+        }
+
+        /* =========================================================================
+           UNIVERSAL INPUT INTERFACES (POINTER EVENTS COVER MOUSE + TOUCH PERFECTLY)
+           ========================================================================= */
+        const joystickTrackingZoneArea = document.getElementById('joystick-zone');
+        const joystickThumbStickNode = document.getElementById('joystick-stick');
+
+        joystickTrackingZoneArea.addEventListener('pointerdown', eventObject => {
+            if (joyActive) return;
+            joystickTouchId = eventObject.pointerId;
+            joyActive = true;
+            computeStickPositionOffsets(eventObject);
+            joystickTrackingZoneArea.setPointerCapture(eventObject.pointerId);
+            eventObject.preventDefault();
+        });
+
+        joystickTrackingZoneArea.addEventListener('pointermove', eventObject => {
+            if (!joyActive || eventObject.pointerId !== joystickTouchId) return;
+            computeStickPositionOffsets(eventObject);
+        });
+
+        const releaseJoystickHoldEngagements = eventObject => {
+            if (!joyActive || eventObject.pointerId !== joystickTouchId) return;
+            joyActive = false;
+            joystickTouchId = null;
+            joystickThumbStickNode.style.transform = 'translate(0px, 0px)';
+            inputVector = { x: 0, y: 0 };
+        };
+        
+        joystickTrackingZoneArea.addEventListener('pointerup', releaseJoystickHoldEngagements);
+        joystickTrackingZoneArea.addEventListener('pointercancel', releaseJoystickHoldEngagements);
+
+        function computeStickPositionOffsets(touchData) {
+            let containerBoundaryRect = joystickTrackingZoneArea.getBoundingClientRect();
+            let centerPointX = containerBoundaryRect.left + containerBoundaryRect.width / 2;
+            let centerPointY = containerBoundaryRect.top + containerBoundaryRect.height / 2;
+            let deltaMoveX = touchData.clientX - centerPointX;
+            let deltaMoveY = touchData.clientY - centerPointY;
+            let linearDistance = Math.hypot(deltaMoveX, deltaMoveY);
+            let maximumBoundaryRadiusLimit = 45;
+            
+            if (linearDistance > maximumBoundaryRadiusLimit) { 
+                deltaMoveX = (deltaMoveX / linearDistance) * maximumBoundaryRadiusLimit; 
+                deltaMoveY = (deltaMoveY / linearDistance) * maximumBoundaryRadiusLimit; 
+            }
+            joystickThumbStickNode.style.transform = `translate(${deltaMoveX}px, ${deltaMoveY}px)`;
+            inputVector.x = deltaMoveX / maximumBoundaryRadiusLimit;
+            inputVector.y = deltaMoveY / maximumBoundaryRadiusLimit;
+        }
+
+        const attachCustomButtonInterfaceListener = (htmlID, executionCallbackRoutine) => {
+            let DOMNodeItem = document.getElementById(htmlID);
+            DOMNodeItem.addEventListener('pointerdown', eventObject => {
+                eventObject.stopPropagation();
+                eventObject.preventDefault();
+                executionCallbackRoutine();
+            });
+        };
+
+        attachCustomButtonInterfaceListener('btn-dash', triggerBurstDashMechanic);
+        attachCustomButtonInterfaceListener('btn-shoot', triggerKickState);
+        attachCustomButtonInterfaceListener('btn-power', chargeReleasePowerState);
+
+        /* =========================================================================
+           CORE SYSTEM LIFE CYCLE INITIALIZATIONS
+           ========================================================================= */
+        function adjustCanvasDrawingContextResolutions() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', adjustCanvasDrawingContextResolutions);
+        adjustCanvasDrawingContextResolutions();
+
+        (function fillUIOptionLists() {
+            let player1SelectorList = document.getElementById('select-p1-team');
+            let player2SelectorList = document.getElementById('select-p2-team');
+            
+            TEAMS.sort((a,b) => a.name.localeCompare(b.name)).forEach((teamProfile) => {
+                let nodeElementOption1 = document.createElement('option');
+                let nodeElementOption2 = document.createElement('option');
+                nodeElementOption1.value = nodeElementOption2.value = teamProfile.id;
+                nodeElementOption1.textContent = nodeElementOption2.textContent = teamProfile.name;
+                
+                if (teamProfile.id === "arg") nodeElementOption1.selected = true;
+                if (teamProfile.id === "bra") nodeElementOption2.selected = true;
+                
+                player1SelectorList.appendChild(nodeElementOption1); 
+                player2SelectorList.appendChild(nodeElementOption2);
+            });
+        })();
+
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().then(() => { fullscreenBtn.textContent = "Exit Fullscreen"; });
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen().then(() => { fullscreenBtn.textContent = "Enable Fullscreen"; });
+            }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            fullscreenBtn.textContent = !document.fullscreenElement ? "Enable Fullscreen" : "Exit Fullscreen";
+        });
+
+        // Safe Fallback Start Event Mapping (Handles both Local and Auto-Host startups)
+        function startMatch(networked = false) {
+            isMultiplayer = networked;
+            
+            if (!isMultiplayer) {
+                // Vanilla Offline Local Setup
+                CONFIG.p1Team = TEAMS.find(t => t.id === document.getElementById('select-p1-team').value);
+                CONFIG.p2Team = TEAMS.find(t => t.id === document.getElementById('select-p2-team').value);
+                CONFIG.userRole = document.getElementById('select-user-role').value;
+                CONFIG.difficulty = document.getElementById('select-difficulty').value;
+                CONFIG.teamSize = parseInt(document.getElementById('select-team-size').value);
+                CONFIG.p2Role = "forward"; // Default filler so AI engine doesnt crash
+            } else if (isHost) {
+                // Host configuration locking - Push data down to P2 Client Object
+                CONFIG.p1Team = TEAMS.find(t => t.id === document.getElementById('select-p1-team').value);
+                CONFIG.userRole = document.getElementById('select-user-role').value;
+                CONFIG.difficulty = document.getElementById('select-difficulty').value;
+                CONFIG.teamSize = parseInt(document.getElementById('select-team-size').value);
+                
+                conn.send({ type: 'start', config: CONFIG });
+            }
+
+            document.getElementById('hud-p1-flag').style.backgroundColor = CONFIG.p1Team.bg;
+            document.getElementById('hud-p2-flag').style.backgroundColor = CONFIG.p2Team.bg;
+            
+            buildTacticalLineups();
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('game-container').classList.remove('hidden');
+            gameState = "playing";
+        }
+
+        document.getElementById('start-btn').addEventListener('click', () => startMatch(false));
+
+        document.getElementById('pause-btn').addEventListener('click', () => { 
+            // In multiplayer only client shows overlay while engine spins safely behind. Host halts logic safely.
+            gameState = isMultiplayer && !isHost ? "playing" : "paused"; 
+            document.getElementById('pause-screen').classList.remove('hidden'); 
+        });
+        document.getElementById('resume-btn').addEventListener('click', () => { 
+            gameState = "playing"; 
+            document.getElementById('pause-screen').classList.add('hidden'); 
+        });
+        document.getElementById('quit-btn').addEventListener('click', () => { location.reload(); });
+
+        requestAnimationFrame(processRenderFrame);
+    </script>
+</body>
+</html>
