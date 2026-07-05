@@ -196,7 +196,6 @@
         .stats-container { max-height: 250px; overflow-y: auto; margin-bottom: 15px; }
         .stats-container::-webkit-scrollbar { width: 6px; }
         .stats-container::-webkit-scrollbar-thumb { background: #2ecc71; border-radius: 3px; }
-        .room-row:hover { background-color: rgba(46, 204, 113, 0.2); }
 
         /* Firebase Live Chat */
         #chat-container {
@@ -319,79 +318,73 @@
             <button id="btn-back-sp" class="btn secondary">Back</button>
         </div>
 
-        <!-- MULTI PLAYER LOBBY (HAXBALL STYLE) -->
-        <div id="ui-mp" class="menu-container hidden" style="max-width: 900px; width: 95%;">
-            <h2 style="color:#8e44ad; margin-bottom: 20px;">Multiplayer Lobby</h2>
-            
-            <div class="form-row" style="flex-wrap: wrap; gap: 10px;">
-                <input type="text" id="mp-name" placeholder="Your Name" maxlength="12" value="Player" style="width: 130px;" />
-                <select id="mp-p1-team" style="flex-grow: 1;"></select>
-                <select id="mp-role" style="width: 140px;">
+        <!-- MULTI PLAYER MENU -->
+        <div id="ui-mp" class="menu-container hidden">
+            <h2 style="color:#8e44ad;">Multi Player</h2>
+            <div class="form-row">
+                <label>Select Name</label>
+                <input type="text" id="mp-name" placeholder="Enter Name" maxlength="12" value="Player" />
+            </div>
+            <div class="form-row">
+                <label>Select Mode</label>
+                <select id="mp-team-size">
+                    <option value="1">1v1</option>
+                    <option value="2">2v2</option>
+                    <option value="5" selected>5v5</option>
+                    <option value="7">7v7</option>
+                    <option value="11">11v11</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>Select Map Size</label>
+                <select id="mp-field-size">
+                    <option value="tiny">Tiny</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="large">Large</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>Add Bots (Fill empty)</label>
+                <input type="checkbox" id="mp-add-bots" checked />
+            </div>
+            <div class="form-row">
+                <label>Your Country</label>
+                <select id="mp-p1-team"></select>
+            </div>
+            <div class="form-row">
+                <label>Your Position</label>
+                <select id="mp-role">
                     <option value="forward">Forward (ST)</option>
                     <option value="winger">Winger</option>
-                    <option value="midfielder" selected>Midfield (CM)</option>
+                    <option value="midfielder" selected>Midfielder (CM)</option>
                     <option value="defender">Defender (CD)</option>
-                    <option value="goalie">Goalie (GK)</option>
+                    <option value="goalie">Goalkeeper (GK)</option>
+                    <option value="spectator">Spectator (Watch)</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>Match Time</label>
+                <select id="mp-time-limit">
+                    <option value="300">5 Minutes</option>
+                    <option value="600">10 Minutes</option>
+                    <option value="900" selected>15 Minutes</option>
+                    <option value="1200">20 Minutes</option>
+                    <option value="2400">40 Minutes</option>
+                    <option value="5400">90 Minutes</option>
                 </select>
             </div>
             
-            <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 15px;">
-                <!-- Room List Table -->
-                <div style="flex: 3; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 14px; min-width: 350px; border: 1px solid rgba(255,255,255,0.08);">
-                    <h3 style="color: #3498db; margin-bottom: 10px; font-size: 1.1rem; text-align: left;">Public Rooms</h3>
-                    <div style="max-height: 250px; overflow-y: auto;">
-                        <table class="stats-table" style="width: 100%; text-align: center;">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;">Room Name</th>
-                                    <th>Players</th>
-                                    <th>Mode</th>
-                                    <th>Size</th>
-                                    <th>Password</th>
-                                </tr>
-                            </thead>
-                            <tbody id="room-list-tbody">
-                                <!-- Populated Dynamically via Firebase -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <!-- Create Room Form -->
-                <div style="flex: 2; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 14px; min-width: 280px; border: 1px solid rgba(255,255,255,0.08);">
-                    <h3 style="color: #9b59b6; margin-bottom: 15px; font-size: 1.1rem; text-align: left;">Create Room</h3>
-                    <div style="margin-bottom: 12px;">
-                        <input type="text" id="mp-room-name" placeholder="Room Name" style="width: 100%; box-sizing: border-box;" maxlength="20" />
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; gap: 10px;">
-                        <select id="mp-team-size" style="width: 48%; box-sizing: border-box;">
-                            <option value="1">1v1</option>
-                            <option value="2">2v2</option>
-                            <option value="5" selected>5v5</option>
-                            <option value="7">7v7</option>
-                            <option value="11">11v11</option>
-                        </select>
-                        <select id="mp-field-size" style="width: 48%; box-sizing: border-box;">
-                            <option value="tiny">Tiny Map</option>
-                            <option value="medium" selected>Med Map</option>
-                            <option value="large">Large Map</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                        <label style="font-size: 0.85rem; color: #ecf0f1; font-weight: bold;">Enable Password?</label>
-                        <input type="checkbox" id="mp-has-pass" />
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <input type="text" id="mp-pass-input" placeholder="Enter Password" style="width: 100%; box-sizing: border-box; display: none;" maxlength="10" />
-                    </div>
-                    <button id="btn-create-room" class="btn" style="margin-top: 0; font-size: 1rem; padding: 14px; background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);">Create Lobby</button>
-                </div>
+            <div class="form-row" style="background: transparent; border: none; padding: 0; margin-top: 15px;">
+                <button id="btn-create-room" class="btn" style="margin-top: 0; width: 48%; font-size: 1rem; padding: 14px; background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);">Create Room</button>
+                <button id="btn-join-room" class="btn" style="margin-top: 0; width: 48%; font-size: 1rem; padding: 14px; background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);">Join Room</button>
             </div>
-            
-            <div id="mp-status" style="text-align: center; color: #bdc3c7; font-size: 0.95rem; font-weight: bold; margin-top: 15px;">
+            <div class="form-row">
+                <input type="text" id="input-room-id" class="net-input" placeholder="6-Digit ID" style="width: 100%; text-align: center; font-family: monospace; font-size: 1.15rem; letter-spacing: 2px;" />
+            </div>
+            <div id="mp-status" style="text-align: center; color: #bdc3c7; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">
                 Ready to connect
             </div>
-            <button id="btn-back-mp" class="btn secondary" style="margin-top: 15px;">Back to Menu</button>
+            <button id="btn-back-mp" class="btn secondary">Back</button>
         </div>
     </div>
 
@@ -514,7 +507,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         let roomRef = null;
-        let roomsRefListener = null;
 
         /* =========================================================================
            LAPBALL TEAMS & CORE CONFIG
@@ -549,13 +541,9 @@
         }
 
         document.getElementById('btn-goto-sp').addEventListener('click', () => switchMenu('ui-sp'));
-        document.getElementById('btn-goto-mp').addEventListener('click', () => {
-            switchMenu('ui-mp');
-            loadRooms(); // Load live multiplayer rooms
-        });
+        document.getElementById('btn-goto-mp').addEventListener('click', () => switchMenu('ui-mp'));
         document.getElementById('btn-back-sp').addEventListener('click', () => switchMenu('ui-initial'));
         document.getElementById('btn-back-mp').addEventListener('click', () => {
-            if (roomsRefListener) db.ref('rooms').off('value', roomsRefListener);
             if (roomRef && !isMultiplayer) roomRef.remove();
             switchMenu('ui-initial');
         });
@@ -573,7 +561,7 @@
         })();
 
         /* =========================================================================
-           MULTIPLAYER HAXBALL LOBBY LOGIC
+           MULTIPLAYER FIREBASE LOGIC
            ========================================================================= */
         let isHost = true;
         let isMultiplayer = false;
@@ -584,78 +572,16 @@
         let lastStatePush = 0;
         let lastInputPush = 0;
 
-        // Toggle Password Input Visibility
-        document.getElementById('mp-has-pass').addEventListener('change', (e) => {
-            document.getElementById('mp-pass-input').style.display = e.target.checked ? 'block' : 'none';
-        });
-
-        // Load Rooms into Table
-        function loadRooms() {
-            const tbody = document.getElementById('room-list-tbody');
-            roomsRefListener = db.ref('rooms').on('value', snap => {
-                tbody.innerHTML = '';
-                const rooms = snap.val();
-                if (!rooms) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No rooms currently available</td></tr>';
-                    return;
-                }
-                
-                for (let roomId in rooms) {
-                    let r = rooms[roomId];
-                    if (!r.meta || r.start) continue; 
-                    
-                    let tr = document.createElement('tr');
-                    tr.classList.add('room-row');
-                    tr.style.cursor = 'pointer';
-                    tr.innerHTML = `
-                        <td style="text-align:left; font-weight:bold; color:#ecf0f1;">${r.meta.name}</td>
-                        <td style="color:#f1c40f;">${r.meta.players}/${r.meta.maxPlayers}</td>
-                        <td style="color:#3498db;">${r.meta.mode}</td>
-                        <td style="text-transform:capitalize;">${r.meta.size}</td>
-                        <td style="color:${r.meta.hasPassword ? '#e74c3c' : '#2ecc71'};">${r.meta.hasPassword ? 'Yes' : 'No'}</td>
-                    `;
-                    
-                    tr.addEventListener('click', () => {
-                        if (r.meta.players >= r.meta.maxPlayers) { alert("Room is full!"); return; }
-                        if (r.meta.hasPassword) {
-                            let pass = prompt("Enter Room Password:");
-                            if (pass !== r.meta.password) { alert("Incorrect Password!"); return; }
-                        }
-                        joinRoom(roomId);
-                    });
-                    tbody.appendChild(tr);
-                }
-            });
-        }
-
-        // Host Create Room
         document.getElementById('btn-create-room').addEventListener('click', () => {
-            const roomName = document.getElementById('mp-room-name').value.trim() || `${document.getElementById('mp-name').value}'s Room`;
-            const hasPass = document.getElementById('mp-has-pass').checked;
-            const pass = document.getElementById('mp-pass-input').value.trim();
-            const modeVal = document.getElementById('mp-team-size').value;
-            const sizeVal = document.getElementById('mp-field-size').value;
-            
             const statusLabel = document.getElementById('mp-status');
             let roomId = Math.floor(100000 + Math.random() * 900000).toString();
-            
+            document.getElementById('input-room-id').value = roomId;
             statusLabel.style.color = "#2ecc71";
-            statusLabel.textContent = "Creating Room...";
+            statusLabel.textContent = "Generating Room Coordinates...";
             
             roomRef = db.ref('rooms/' + roomId);
-            roomRef.set({
-                meta: {
-                    name: roomName,
-                    mode: `${modeVal}v${modeVal}`,
-                    size: sizeVal,
-                    hasPassword: hasPass,
-                    password: hasPass ? pass : "",
-                    players: 1,
-                    maxPlayers: 2
-                },
-                start: false
-            }).then(() => {
-                statusLabel.textContent = "Lobby active. Waiting for Player 2...";
+            roomRef.remove().then(() => {
+                statusLabel.textContent = "Waiting for Player 2 to join...";
                 document.getElementById('btn-create-room').disabled = true;
                 
                 roomRef.child('p2Config').on('value', snap => {
@@ -669,13 +595,12 @@
                         CONFIG.p1Name = document.getElementById('mp-name').value || "Host";
                         CONFIG.p1Role = document.getElementById('mp-role').value;
                         CONFIG.difficulty = "medium";
-                        CONFIG.teamSize = parseInt(modeVal);
-                        CONFIG.addBots = true;
-                        CONFIG.timeLimit = 900; // 15 Min Match
-                        CONFIG.fieldSize = sizeVal; 
+                        CONFIG.teamSize = parseInt(document.getElementById('mp-team-size').value);
+                        CONFIG.addBots = document.getElementById('mp-add-bots').checked;
+                        CONFIG.timeLimit = parseInt(document.getElementById('mp-time-limit').value);
+                        CONFIG.fieldSize = document.getElementById('mp-field-size').value; 
                         
-                        statusLabel.textContent = "Player 2 Joined! Spawning Match...";
-                        roomRef.child('meta/players').set(2);
+                        statusLabel.textContent = "Player 2 Found! Spawning Match...";
                         roomRef.child('config').set(CONFIG);
                         roomRef.child('start').set(true);
                         
@@ -692,20 +617,18 @@
                         setTimeout(() => startMatch(true), 600);
                     }
                 });
-                roomRef.onDisconnect().remove();
             });
         });
 
-        // Client Join Room
-        function joinRoom(roomId) {
+        document.getElementById('btn-join-room').addEventListener('click', () => {
+            let roomId = document.getElementById('input-room-id').value.trim();
+            if(!roomId) return;
             const statusLabel = document.getElementById('mp-status');
             statusLabel.style.color = "#3498db";
-            statusLabel.textContent = "Connecting to Room...";
+            statusLabel.textContent = "Connecting to Host...";
             
             roomRef = db.ref('rooms/' + roomId);
             roomRef.once('value', snap => {
-                if(!snap.exists() || snap.val().start) { alert("Room is no longer available."); return; }
-                
                 statusLabel.textContent = "Link Established! Waiting for host initialization...";
                 isHost = false;
                 isMultiplayer = true;
@@ -722,13 +645,12 @@
                             CONFIG = confSnap.val();
                             roomRef.child('state').on('value', stateSnap => { if(stateSnap.exists()) syncStateFromHost(stateSnap.val()); });
                             setupRematchListener();
-                            if (roomsRefListener) db.ref('rooms').off('value', roomsRefListener);
                             startMatch(true);
                         });
                     }
                 });
             });
-        }
+        });
 
         function handleRemoteAction(action, vector) {
             let p2Node = players.find(p => p.teamId === 2 && !p.isAI);
@@ -830,7 +752,7 @@
         let CONFIG = { difficulty: "medium", p1Team: TEAMS[0], p2Team: TEAMS[1], teamSize: 5, timeLimit: 900, fieldSize: "medium", addBots: true, p1Name: "Player", p2Name: "Bot", p1Role: "forward", p2Role: "forward" };
         let map = { width: 1800, height: 1100, goalY1: 420, goalY2: 680, goalDepth: 65 };
         let players = []; let ball = null;
-        let camera = { x: 0, y: 0, zoom: 0.55 }; // CHANGED to 0.55 for higher/larger camera angle
+        let camera = { x: 0, y: 0, zoom: 0.55 }; 
         let gameState = "menu";
         let scores = { p1: 0, p2: 0 };
         let matchTimer = 0;
