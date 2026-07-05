@@ -124,6 +124,7 @@
         }
         
         input[type="text"], input[type="number"] { cursor: text; }
+        input[type="checkbox"] { width: 24px; height: 24px; accent-color: #2ecc71; cursor: pointer; }
 
         select:focus, input[type="text"]:focus, input[type="number"]:focus, .net-input:focus {
             box-shadow: 0 0 10px rgba(46, 204, 113, 0.6);
@@ -342,16 +343,9 @@
                     <option value="large">Large</option>
                 </select>
             </div>
-            <div class="form-row" id="mp-bot-row">
-                <label>Number of Bots</label>
-                <select id="mp-bot-count">
-                    <option value="auto" selected>Auto Fill</option>
-                    <option value="0">0 Bots</option>
-                    <option value="1">1 Bot</option>
-                    <option value="2">2 Bots</option>
-                    <option value="3">3 Bots</option>
-                    <option value="4">4 Bots</option>
-                </select>
+            <div class="form-row">
+                <label>Add Bots (Fill empty)</label>
+                <input type="checkbox" id="mp-add-bots" checked />
             </div>
             <div class="form-row">
                 <label>Your Country</label>
@@ -563,15 +557,6 @@
             switchMenu('ui-initial');
         });
 
-        document.getElementById('mp-team-size').addEventListener('change', (e) => {
-            let val = parseInt(e.target.value);
-            if (val >= 5) {
-                document.getElementById('mp-bot-row').style.display = 'none';
-            } else {
-                document.getElementById('mp-bot-row').style.display = 'flex';
-            }
-        });
-
         (function populateTeams() {
             const sp1 = document.getElementById('sp-p1-team');
             const sp2 = document.getElementById('sp-p2-team');
@@ -585,11 +570,13 @@
         })();
 
         /* =========================================================================
-           MULTIPLAYER FIREBASE LOGIC (MULTI-CLIENT DROP-IN)
+           MULTIPLAYER FIREBASE LOGIC (CLASSIC LOBBY WAIT)
            ========================================================================= */
         let isHost = true;
         let isMultiplayer = false;
-        let myUid = "host";
+        let remoteInput = { x: 0, y: 0 };
+        let remoteKickIntent = false;
+        let remotePowerShotActive = false;
 
         let lastStatePush = 0;
         let lastInputPush = 0;
@@ -599,118 +586,59 @@
             let roomId = Math.floor(100000 + Math.random() * 900000).toString();
             document.getElementById('input-room-id').value = roomId;
             statusLabel.style.color = "#2ecc71";
-            statusLabel.textContent = "Spawning Match...";
+            statusLabel.textContent = "Generating Room Coordinates...";
             
-            CONFIG.p1Team = TEAMS.find(t => t.id === document.getElementById('mp-p1-team').value);
-            CONFIG.p1Name = document.getElementById('mp-name').value || "Host";
-            CONFIG.p1Role = document.getElementById('mp-role').value;
-            CONFIG.difficulty = "medium";
-            CONFIG.teamSize = parseInt(document.getElementById('mp-team-size').value);
-            CONFIG.botCountSetting = document.getElementById('mp-bot-count').value;
-            CONFIG.timeLimit = parseInt(document.getElementById('mp-time-limit').value);
-            CONFIG.fieldSize = document.getElementById('mp-field-size').value; 
-            // Default Team 2 config until a player joins
-            CONFIG.p2Team = TEAMS.find(t => t.id === "bra"); 
-
-            myUid = "host";
             roomRef = db.ref('rooms/' + roomId);
-            
-            roomRef.set({
-                config: CONFIG,
-                start: true,
-                hostLeft: false
-            }).then(() => {
-                // Handle Host Disconnect
+            roomRef.remove().then(() => {
+                // Host disconnect cleanup
                 roomRef.onDisconnect().remove();
                 roomRef.child('hostLeft').onDisconnect().set(true);
 
-                isHost = true;
-                isMultiplayer = true;
+                statusLabel.textContent = "Waiting for Player 2 to join...";
+                document.getElementById('btn-create-room').disabled = true;
                 
-                // Track connected clients
-                let humanClientsCount = 0;
-
-                roomRef.child('clients').on('child_added', snap => {
-                    let clientId = snap.key;
-                    let clientData = snap.val().info;
-                    
-                    if (clientData.role === 'spectator') return;
-
-                    humanClientsCount++;
-                    
-                    // If first human joins, change all Opponent bots to their selected Country!
-                    if (humanClientsCount === 1) {
-                        CONFIG.p2Team = TEAMS.find(t => t.id === clientData.team) || CONFIG.p2Team;
-                        players.forEach(p => {
-                            if (p.teamId === 2) {
-                                p.teamConfig = CONFIG.p2Team;
-                                p.color = CONFIG.p2Team.bg;
-                            }
-                        });
-                        roomRef.child('config').set(CONFIG);
-                        document.getElementById('hud-p2-flag').style.backgroundColor = CONFIG.p2Team.bg;
-                    }
-
-                    // Determine target team (balance teams)
-                    let targetTeamId = (humanClientsCount % 2 === 1) ? 2 : 1;
-
-                    // Find a bot to replace
-                    let bot = players.find(p => p.teamId === targetTeamId && p.isAI && p.clientId == null && p.role === clientData.role);
-                    if (!bot) bot = players.find(p => p.teamId === targetTeamId && p.isAI && p.clientId == null);
-                    if (!bot) bot = players.find(p => p.isAI && p.clientId == null);
-                    
-                    if (!bot) {
-                        // Dynamic spawn if 0 bots were selected originally
-                        let homeX = targetTeamId === 1 ? map.width * 0.4 : map.width * 0.6;
-                        let homeY = map.height / 2;
-                        bot = new Player(homeX, homeY, targetTeamId === 1 ? CONFIG.p1Team : CONFIG.p2Team, targetTeamId, false, clientData.role, homeX, homeY, clientData.name);
-                        players.push(bot);
-                    }
-
-                    if (bot) {
-                        bot.isAI = false;
-                        bot.clientId = clientId;
-                        bot.playerName = clientData.name;
-                        bot.remoteInput = {x:0, y:0};
+                // Wait for Player 2 to join
+                roomRef.child('p2Config').on('value', snap => {
+                    if(snap.exists()) {
+                        let p2Data = snap.val();
+                        CONFIG.p2Team = TEAMS.find(t => t.id === p2Data.team);
+                        CONFIG.p2Name = p2Data.name;
+                        CONFIG.p2Role = p2Data.role;
                         
-                        roomRef.child(`clients/${clientId}/input`).on('value', inp => {
-                            if(inp.exists()) bot.remoteInput = inp.val();
+                        CONFIG.p1Team = TEAMS.find(t => t.id === document.getElementById('mp-p1-team').value);
+                        CONFIG.p1Name = document.getElementById('mp-name').value || "Host";
+                        CONFIG.p1Role = document.getElementById('mp-role').value;
+                        CONFIG.difficulty = "medium";
+                        CONFIG.teamSize = parseInt(document.getElementById('mp-team-size').value);
+                        CONFIG.addBots = document.getElementById('mp-add-bots').checked;
+                        CONFIG.timeLimit = parseInt(document.getElementById('mp-time-limit').value);
+                        CONFIG.fieldSize = document.getElementById('mp-field-size').value; 
+                        
+                        statusLabel.textContent = "Player 2 Found! Spawning Match...";
+                        roomRef.child('config').set(CONFIG);
+                        roomRef.child('start').set(true);
+                        
+                        isHost = true;
+                        isMultiplayer = true;
+                        
+                        // Setup gameplay listeners
+                        roomRef.child('clientInput').on('value', inputSnap => { if(inputSnap.exists()) remoteInput = inputSnap.val(); });
+                        roomRef.child('clientActions').on('child_added', actionSnap => {
+                            let a = actionSnap.val();
+                            if(Date.now() - a.t < 2000) handleRemoteAction(a.action, a.vector);
                         });
-                        roomRef.child(`clients/${clientId}/actions`).on('child_added', act => {
-                            let a = act.val();
-                            if(Date.now() - a.t < 2000) {
-                                if (a.action === 'dash') {
-                                    let len = Math.hypot(a.vector.x, a.vector.y);
-                                    if (len > 0) { bot.vx += (a.vector.x / len) * 11.5; bot.vy += (a.vector.y / len) * 11.5; }
-                                } else if (a.action === 'kick') {
-                                    bot.kickIntent = true; setTimeout(() => bot.kickIntent = false, 160);
-                                } else if (a.action === 'power') {
-                                    bot.powerShotActive = true; setTimeout(() => bot.powerShotActive = false, 200);
-                                }
+
+                        // Watch for Client disconnecting to post in chat
+                        roomRef.child('clientLeft').on('value', leftSnap => {
+                            if (leftSnap.val() === true) {
+                                roomRef.child('chats').push({ sender: "System", text: `${CONFIG.p2Name} left the game.`, t: Date.now() });
                             }
                         });
-                        roomRef.child('chats').push({ sender: "System", text: `${clientData.name} joined the game.`, t: Date.now() });
+                        
+                        setupRematchListener();
+                        setTimeout(() => startMatch(true), 600);
                     }
                 });
-
-                // Client Disconnected -> Turn them back into an AI Bot
-                roomRef.child('clients').on('child_removed', snap => {
-                    let clientId = snap.key;
-                    let clientData = snap.val().info;
-                    
-                    let pNode = players.find(p => p.clientId === clientId);
-                    if (pNode) {
-                        pNode.isAI = true;
-                        pNode.clientId = null;
-                        pNode.playerName = `Bot_${Math.floor(10+Math.random()*89)}`;
-                        pNode.remoteInput = {x:0, y:0};
-                    }
-                    roomRef.child('chats').push({ sender: "System", text: `${clientData.name} left the game.`, t: Date.now() });
-                });
-
-                setupRematchListener();
-                document.getElementById('btn-create-room').disabled = false;
-                startMatch(true);
             });
         });
 
@@ -723,8 +651,8 @@
             
             roomRef = db.ref('rooms/' + roomId);
             roomRef.once('value', snap => {
-                if(!snap.exists()) {
-                    alert("Room not found!");
+                if(!snap.exists() || snap.val().start) {
+                    alert("Room is not available or already full.");
                     statusLabel.textContent = "Ready to connect";
                     return;
                 }
@@ -733,11 +661,13 @@
                     return;
                 }
 
-                statusLabel.textContent = "Link Established! Entering Match...";
+                statusLabel.textContent = "Link Established! Waiting for host initialization...";
                 isHost = false;
                 isMultiplayer = true;
-                myUid = Math.random().toString(36).substr(2, 9);
-                
+
+                // Mark client as left if tab is closed
+                roomRef.child('clientLeft').onDisconnect().set(true);
+
                 // Monitor if Host leaves the game to trigger popup
                 roomRef.child('hostLeft').on('value', hSnap => {
                     if (hSnap.val() === true) {
@@ -746,32 +676,41 @@
                     }
                 });
 
-                // Set Client Presence
-                roomRef.child(`clients/${myUid}/info`).set({
+                // Trigger the host to start the game
+                roomRef.child('p2Config').set({
+                    team: document.getElementById('mp-p1-team').value,
                     name: document.getElementById('mp-name').value || "Client",
-                    role: document.getElementById('mp-role').value,
-                    team: document.getElementById('mp-p1-team').value
+                    role: document.getElementById('mp-role').value
                 });
-                // Remove Client on Tab Close
-                roomRef.child(`clients/${myUid}`).onDisconnect().remove();
                 
-                roomRef.child('config').once('value', confSnap => {
-                    CONFIG = confSnap.val();
-                    roomRef.child('state').on('value', stateSnap => { if(stateSnap.exists()) syncStateFromHost(stateSnap.val()); });
-                    setupRematchListener();
-                    startMatch(true);
+                roomRef.child('start').on('value', startSnap => {
+                    if(startSnap.val() === true) {
+                        roomRef.child('config').once('value', confSnap => {
+                            CONFIG = confSnap.val();
+                            roomRef.child('state').on('value', stateSnap => { if(stateSnap.exists()) syncStateFromHost(stateSnap.val()); });
+                            setupRematchListener();
+                            startMatch(true);
+                        });
+                    }
                 });
             });
         });
 
+        function handleRemoteAction(action, vector) {
+            let p2Node = players.find(p => p.teamId === 2 && !p.isAI);
+            if (!p2Node) return;
+            if (action === 'dash') {
+                let len = Math.hypot(vector.x, vector.y);
+                if (len > 0) { p2Node.vx += (vector.x / len) * 11.5; p2Node.vy += (vector.y / len) * 11.5; }
+            } else if (action === 'kick') {
+                remoteKickIntent = true; setTimeout(() => remoteKickIntent = false, 160);
+            } else if (action === 'power') {
+                remotePowerShotActive = true;
+            }
+        }
+
         function serializeState() {
-            // Include clientId and color to live-sync drop-in/outs
-            let pl = players.map(p => [
-                Math.round(p.x), Math.round(p.y), 
-                Number(p.vx.toFixed(2)), Number(p.vy.toFixed(2)), 
-                Number(p.stamina.toFixed(2)), 
-                p.clientId || "", p.playerName, p.isAI ? 1 : 0, p.color
-            ]);
+            let pl = players.map(p => [Math.round(p.x), Math.round(p.y), Number(p.vx.toFixed(2)), Number(p.vy.toFixed(2)), Number(p.stamina.toFixed(2))]);
             return {
                 b: [Math.round(ball.x), Math.round(ball.y), Number(ball.vx.toFixed(2)), Number(ball.vy.toFixed(2))],
                 p: pl, s: [scores.p1, scores.p2], t: Math.round(matchTimer), g: gameState, a: alertText
@@ -783,24 +722,15 @@
             if (Math.hypot(ball.x - data.b[0], ball.y - data.b[1]) > 300) { ball.x = data.b[0]; ball.y = data.b[1]; }
             ball.targetX = data.b[0]; ball.targetY = data.b[1]; ball.vx = data.b[2]; ball.vy = data.b[3];
             
-            for(let i=0; i<data.p.length; i++){
-                if(!players[i]) {
-                    // Dynamically spawn player client-side if array grew (0 bots chosen initially)
-                    players.push(new Player(data.p[i][0], data.p[i][1], TEAMS[0], 1, true, "forward", 0, 0, data.p[i][6]));
-                }
+            for(let i=0; i<players.length; i++){
+                if(!players[i] || !data.p[i]) continue;
                 if (Math.hypot(players[i].x - data.p[i][0], players[i].y - data.p[i][1]) > 300) {
                     players[i].x = data.p[i][0]; players[i].y = data.p[i][1];
                 }
                 players[i].targetX = data.p[i][0]; players[i].targetY = data.p[i][1];
                 players[i].vx = data.p[i][2]; players[i].vy = data.p[i][3];
                 players[i].stamina = data.p[i][4];
-                players[i].clientId = data.p[i][5];
-                players[i].playerName = data.p[i][6];
-                players[i].isAI = (data.p[i][7] === 1);
-                players[i].color = data.p[i][8];
             }
-            if (players.length > data.p.length) players.length = data.p.length; // trim excess
-
             scores.p1 = data.s[0]; scores.p2 = data.s[1];
             matchTimer = data.t;
             gameState = data.g;
@@ -812,10 +742,6 @@
             if (gameState === "postmatch" && document.getElementById('post-match-screen').classList.contains('hidden')) {
                 showPostMatchScreen(false);
             }
-            
-            // Sync live HUD colors if they changed
-            let sampleP2 = players.find(p => p.teamId === 2);
-            if (sampleP2 && sampleP2.color) document.getElementById('hud-p2-flag').style.backgroundColor = sampleP2.color;
         }
 
         /* =========================================================================
@@ -838,7 +764,7 @@
         document.getElementById('chat-send').addEventListener('click', () => {
             let text = chatInput.value.trim();
             if(!text || !roomRef) return;
-            let senderName = isHost ? CONFIG.p1Name : (document.getElementById('mp-name').value || "Client");
+            let senderName = isHost ? CONFIG.p1Name : CONFIG.p2Name;
             roomRef.child('chats').push({ sender: senderName, text: text, t: Date.now() });
             chatInput.value = ""; chatInput.focus(); 
         });
@@ -871,7 +797,7 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d', { alpha: false });
         
-        let CONFIG = { difficulty: "medium", p1Team: TEAMS[0], p2Team: TEAMS[1], teamSize: 5, botCountSetting: "auto", timeLimit: 900, fieldSize: "medium", p1Name: "Player", p1Role: "forward" };
+        let CONFIG = { difficulty: "medium", p1Team: TEAMS[0], p2Team: TEAMS[1], teamSize: 5, timeLimit: 900, fieldSize: "medium", addBots: true, p1Name: "Player", p2Name: "Bot", p1Role: "forward", p2Role: "forward" };
         let map = { width: 1800, height: 1100, goalY1: 420, goalY2: 680, goalDepth: 65 };
         let players = []; let ball = null;
         let camera = { x: 0, y: 0, zoom: 0.55 }; 
@@ -884,7 +810,7 @@
         let dashCooldown = 0; let powerCooldown = 0;
         
         let joyActive = false; let joystickTouchId = null;
-        let inputVector = { x: 0, y: 0 }; 
+        let inputVector = { x: 0, y: 0 }; let kickIntent = false;
 
         /* FULLSCREEN EVENT */
         document.getElementById('hud-fullscreen-btn').addEventListener('click', () => {
@@ -903,7 +829,7 @@
                     roomRef.child('hostLeft').set(true);
                     roomRef.remove();
                 } else {
-                    roomRef.child(`clients/${myUid}`).remove();
+                    roomRef.child('clientLeft').set(true);
                 }
             }
             location.reload();
@@ -977,12 +903,7 @@
             map.goalY1 = map.height / 2 - 130; map.goalY2 = map.height / 2 + 130;
 
             let size = CONFIG.teamSize;
-            let spawnLimit = size; 
-
-            // Implement specific Bot Count if selected in Multiplayer (modes <= 2)
-            if (isMultiplayer && CONFIG.botCountSetting !== "auto" && size <= 4) {
-                spawnLimit = parseInt(CONFIG.botCountSetting) + 1; // +1 to account for the human host slot
-            }
+            if(!CONFIG.addBots && isMultiplayer) size = 1; 
 
             let getRolesForSize = (s) => {
                 if (s === 1) return ["forward"];
@@ -1003,7 +924,7 @@
                 else r1[size - 1] = CONFIG.p1Role;
             }
 
-            for (let i = 0; i < spawnLimit; i++) {
+            for (let i = 0; i < size; i++) {
                 let currentRole = r1[i];
                 let isUserNode = (CONFIG.p1Role !== "spectator" && i === size - 1); 
                 let spatialRatioX = (currentRole === "goalie") ? 0.05 : (currentRole === "defender") ? 0.20 : (currentRole === "midfielder") ? 0.40 : (currentRole === "winger") ? 0.45 : 0.48;
@@ -1013,20 +934,27 @@
                 let pName = isUserNode ? CONFIG.p1Name : `Bot_${Math.floor(10 + Math.random()*89)}`;
                 let p = new Player(homeX, homeY, CONFIG.p1Team, 1, !isUserNode, currentRole, homeX, homeY, pName);
                 p.isLocalHuman = isUserNode && isHost;
-                if (isUserNode) p.clientId = "host";
                 players.push(p);
             }
 
-            // TEAM 2 SETUP (AI Bots awaiting clients)
+            // TEAM 2 SETUP (Client/AI)
             let r2 = getRolesForSize(size);
-            for (let i = 0; i < spawnLimit; i++) {
+            if (isMultiplayer && CONFIG.p2Role !== "spectator") {
+                let idx = r2.indexOf(CONFIG.p2Role);
+                if (idx !== -1) { r2[idx] = r2[size - 1]; r2[size - 1] = CONFIG.p2Role; }
+                else r2[size - 1] = CONFIG.p2Role;
+            }
+
+            for (let i = 0; i < size; i++) {
                 let currentRole = r2[i];
+                let isUserNode = isMultiplayer ? (CONFIG.p2Role !== "spectator" && i === size - 1) : false;
                 let spatialRatioX = (currentRole === "goalie") ? 0.95 : (currentRole === "defender") ? 0.80 : (currentRole === "midfielder") ? 0.60 : (currentRole === "winger") ? 0.55 : 0.52;
                 let lateralRatioY = (currentRole === "goalie") ? 0.5 : (0.2 + (i/size) * 0.6);
                 let homeX = map.width * spatialRatioX; let homeY = map.height * lateralRatioY;
                 
-                let pName = `Bot_${Math.floor(10 + Math.random()*89)}`;
-                let p = new Player(homeX, homeY, CONFIG.p2Team, 2, true, currentRole, homeX, homeY, pName);
+                let pName = isUserNode ? CONFIG.p2Name : `Bot_${Math.floor(10 + Math.random()*89)}`;
+                let p = new Player(homeX, homeY, CONFIG.p2Team, 2, !isUserNode, currentRole, homeX, homeY, pName);
+                p.isLocalHuman = isUserNode && !isHost;
                 players.push(p);
             }
 
@@ -1140,11 +1068,11 @@
             players.forEach(p => {
                 if (checkAndResolveCirclePhysics(p, ball)) {
                     if (!p.isAI) {
-                        let localIsPower = p.powerShotActive || (p.isLocalHuman && powerShotActive);
-                        let localIsKick = p.kickIntent || (p.isLocalHuman && kickIntent);
+                        let localIsPower = (p.teamId === 1) ? powerShotActive : remotePowerShotActive;
+                        let localIsKick = (p.teamId === 1) ? kickIntent : remoteKickIntent;
                         let dx = ball.x - p.x; let dy = ball.y - p.y; let len = Math.hypot(dx, dy);
                         
-                        if (localIsPower) { ball.vx = (dx / len) * 22.0; ball.vy = (dy / len) * 22.0; if(p.isLocalHuman) powerShotActive = false; else p.powerShotActive = false; }
+                        if (localIsPower) { ball.vx = (dx / len) * 22.0; ball.vy = (dy / len) * 22.0; if(p.teamId === 1) powerShotActive = false; else remotePowerShotActive = false; }
                         else if (localIsKick) { ball.vx = (dx / len) * 11.5; ball.vy = (dy / len) * 11.5; }
                     }
                 }
@@ -1193,14 +1121,7 @@
         /* RENDERING */
         function processRenderFrame() {
             if (gameState === "playing" || gameState === "goal" || gameState === "postmatch") {
-                
-                // Track active client for camera
-                let activeUserControlledDisc;
-                if (isHost || !isMultiplayer) {
-                    activeUserControlledDisc = players.find(p => p.isLocalHuman);
-                } else {
-                    activeUserControlledDisc = players.find(p => p.clientId === myUid);
-                }
+                let activeUserControlledDisc = players.find(p => p.isLocalHuman);
                 
                 // Advanced Camera Modes
                 if (activeUserControlledDisc) {
@@ -1208,17 +1129,19 @@
                     camera.x = Math.max(-600, Math.min(map.width + 600 - (canvas.width / camera.zoom), activeUserControlledDisc.x - (canvas.width / camera.zoom) / 2));
                     camera.y = Math.max(-600, Math.min(map.height + 600 - (canvas.height / camera.zoom), activeUserControlledDisc.y - (canvas.height / camera.zoom) / 2));
                 } else {
-                    let myRole = document.getElementById('sp-role').value; // fallback
-                    if (spectatorCamMode === "full") {
-                        let zoomX = canvas.width / (map.width + 200);
-                        let zoomY = canvas.height / (map.height + 200);
-                        camera.zoom = Math.min(zoomX, zoomY);
-                        camera.x = (map.width / 2) - (canvas.width / camera.zoom) / 2;
-                        camera.y = (map.height / 2) - (canvas.height / camera.zoom) / 2;
-                    } else {
-                        camera.zoom = 0.55;
-                        camera.x = Math.max(-600, Math.min(map.width + 600 - (canvas.width / camera.zoom), ball.x - (canvas.width / camera.zoom) / 2));
-                        camera.y = Math.max(-600, Math.min(map.height + 600 - (canvas.height / camera.zoom), ball.y - (canvas.height / camera.zoom) / 2));
+                    let myRole = isMultiplayer ? (isHost ? CONFIG.p1Role : CONFIG.p2Role) : CONFIG.p1Role;
+                    if (myRole === "spectator") {
+                        if (spectatorCamMode === "full") {
+                            let zoomX = canvas.width / (map.width + 200);
+                            let zoomY = canvas.height / (map.height + 200);
+                            camera.zoom = Math.min(zoomX, zoomY);
+                            camera.x = (map.width / 2) - (canvas.width / camera.zoom) / 2;
+                            camera.y = (map.height / 2) - (canvas.height / camera.zoom) / 2;
+                        } else {
+                            camera.zoom = 0.55;
+                            camera.x = Math.max(-600, Math.min(map.width + 600 - (canvas.width / camera.zoom), ball.x - (canvas.width / camera.zoom) / 2));
+                            camera.y = Math.max(-600, Math.min(map.height + 600 - (canvas.height / camera.zoom), ball.y - (canvas.height / camera.zoom) / 2));
+                        }
                     }
                 }
 
@@ -1249,19 +1172,14 @@
                 players.forEach(p => {
                     ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 6;
                     ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill(); ctx.restore();
-                    
-                    // Highlight active player
-                    let isMe = (isHost && p.isLocalHuman) || (!isHost && p.clientId === myUid);
-                    ctx.lineWidth = 4; ctx.strokeStyle = isMe ? "#f1c40f" : "#ffffff"; ctx.stroke();
-                    ctx.beginPath(); ctx.arc(p.x, p.y, p.radius * 0.45, 0, Math.PI * 2); 
-                    ctx.fillStyle = p.teamId === 1 ? CONFIG.p1Team.secondary : CONFIG.p2Team.secondary; 
-                    ctx.fill();
+                    ctx.lineWidth = 4; ctx.strokeStyle = p.isLocalHuman ? "#f1c40f" : "#ffffff"; ctx.stroke();
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.radius * 0.45, 0, Math.PI * 2); ctx.fillStyle = p.teamConfig.secondary; ctx.fill();
 
                     // RENDER MULTIPLAYER & BOT NAMES
                     ctx.fillStyle = "#ffffff"; ctx.font = "900 13px sans-serif"; ctx.textAlign = "center";
                     ctx.shadowColor = "black"; ctx.shadowBlur = 4;
                     ctx.fillText(p.playerName, p.x, p.y - p.radius - 10);
-                    if (isMe) { ctx.fillStyle = "#f1c40f"; ctx.fillText("▼", p.x, p.y - p.radius - 24); }
+                    if (p.isLocalHuman) { ctx.fillStyle = "#f1c40f"; ctx.fillText("▼", p.x, p.y - p.radius - 24); }
                     ctx.shadowBlur = 0;
                 });
 
@@ -1308,26 +1226,19 @@
                 }
 
                 if (isHost || !isMultiplayer) {
-                    
-                    // Host local Input
-                    let p1Node = players.find(p => p.isLocalHuman);
+                    let p1Node = players.find(p => p.teamId === 1 && !p.isAI);
                     if (p1Node) {
                         let nLen = Math.hypot(inputVector.x, inputVector.y);
                         let tgtX = (nLen > 1 ? inputVector.x/nLen : inputVector.x);
                         let tgtY = (nLen > 1 ? inputVector.y/nLen : inputVector.y);
                         p1Node.vx += tgtX * p1Node.speed; p1Node.vy += tgtY * p1Node.speed;
                     }
-                    
-                    // Remote clients inputs mapping
-                    if (isMultiplayer) {
-                        players.forEach(p => {
-                            if (!p.isAI && p.clientId && p.remoteInput && p.clientId !== "host") {
-                                let rLen = Math.hypot(p.remoteInput.x, p.remoteInput.y);
-                                let rTgtX = rLen > 1.0 ? p.remoteInput.x/rLen : p.remoteInput.x;
-                                let rTgtY = rLen > 1.0 ? p.remoteInput.y/rLen : p.remoteInput.y;
-                                p.vx += rTgtX * p.speed; p.vy += rTgtY * p.speed;
-                            }
-                        });
+                    let p2Node = players.find(p => p.teamId === 2 && !p.isAI);
+                    if (p2Node && isMultiplayer) {
+                        let rLen = Math.hypot(remoteInput.x, remoteInput.y);
+                        let rTgtX = rLen > 1.0 ? remoteInput.x/rLen : remoteInput.x;
+                        let rTgtY = rLen > 1.0 ? remoteInput.y/rLen : remoteInput.y;
+                        p2Node.vx += rTgtX * p2Node.speed; p2Node.vy += rTgtY * p2Node.speed;
                     }
 
                     executeHumanizedAI(); ball.update(); players.forEach(pl => pl.update()); resolveComplexCollisions();
@@ -1345,10 +1256,7 @@
                         roomRef.child('state').set(serializeState()); lastStatePush = Date.now();
                     }
                 } else if (isMultiplayer && !isHost) {
-                    if (roomRef && (Date.now() - lastInputPush > 33)) { 
-                        roomRef.child(`clients/${myUid}/input`).set(inputVector); 
-                        lastInputPush = Date.now(); 
-                    }
+                    if (roomRef && (Date.now() - lastInputPush > 33)) { roomRef.child('clientInput').set(inputVector); lastInputPush = Date.now(); }
                     ball.x += (ball.targetX - ball.x) * 0.3; ball.y += (ball.targetY - ball.y) * 0.3;
                     players.forEach(p => { p.x += (p.targetX - p.x) * 0.3; p.y += (p.targetY - p.y) * 0.3; });
                 }
@@ -1454,27 +1362,18 @@
         function triggerBurstDashMechanic() {
             if (dashCooldown > 0) return;
             dashCooldown = 150; 
-            if (!isHost && isMultiplayer && roomRef) { 
-                roomRef.child(`clients/${myUid}/actions`).push({action: 'dash', vector: inputVector, t: Date.now()}); 
-                return; 
-            }
+            if (!isHost && isMultiplayer && roomRef) { roomRef.child('clientActions').push({action: 'dash', vector: inputVector, t: Date.now()}); return; }
             let pNode = players.find(p => p.isLocalHuman); if (!pNode) return;
             let nLen = Math.hypot(inputVector.x, inputVector.y);
             if (nLen > 0) { pNode.vx += (inputVector.x / nLen) * 11.5; pNode.vy += (inputVector.y / nLen) * 11.5; }
         }
         function triggerKickState() {
-            if (!isHost && isMultiplayer && roomRef) { 
-                roomRef.child(`clients/${myUid}/actions`).push({action: 'kick', vector: null, t: Date.now()}); 
-                return; 
-            }
+            if (!isHost && isMultiplayer && roomRef) { roomRef.child('clientActions').push({action: 'kick', vector: null, t: Date.now()}); return; }
             kickIntent = true; setTimeout(() => kickIntent = false, 160);
         }
         function chargeReleasePowerState() {
             if (powerCooldown > 0) return; powerCooldown = 220; 
-            if (!isHost && isMultiplayer && roomRef) { 
-                roomRef.child(`clients/${myUid}/actions`).push({action: 'power', vector: null, t: Date.now()}); 
-                return; 
-            }
+            if (!isHost && isMultiplayer && roomRef) { roomRef.child('clientActions').push({action: 'power', vector: null, t: Date.now()}); return; }
             powerShotActive = true;
         }
 
@@ -1514,9 +1413,9 @@
             CONFIG.fieldSize = document.getElementById('sp-field-size').value;
             CONFIG.difficulty = document.getElementById('sp-difficulty').value;
             CONFIG.teamSize = parseInt(document.getElementById('sp-team-size').value);
-            CONFIG.botCountSetting = "auto";
             CONFIG.timeLimit = parseInt(document.getElementById('sp-time-limit').value);
             CONFIG.p1Role = document.getElementById('sp-role').value;
+            CONFIG.addBots = true;
             CONFIG.p1Name = "Player";
             CONFIG.p2Name = "Bot";
             startMatch(false);
@@ -1525,14 +1424,13 @@
         function startMatch(networked = false) {
             document.getElementById('hud-p1-flag').style.backgroundColor = CONFIG.p1Team.bg;
             document.getElementById('hud-p2-flag').style.backgroundColor = CONFIG.p2Team.bg;
-            
-            if (isHost || !isMultiplayer) buildTacticalLineups();
+            buildTacticalLineups();
             
             document.getElementById('main-menu').classList.add('hidden');
             document.getElementById('game-container').classList.remove('hidden');
 
-            let roleSelected = document.getElementById(isMultiplayer ? 'mp-role' : 'sp-role').value;
-            if (roleSelected === "spectator") {
+            let myRole = isMultiplayer ? (isHost ? CONFIG.p1Role : CONFIG.p2Role) : CONFIG.p1Role;
+            if (myRole === "spectator") {
                 document.getElementById('spectator-ui').classList.remove('hidden');
                 document.getElementById('controls-container').classList.add('hidden');
             } else {
