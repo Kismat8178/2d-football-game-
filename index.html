@@ -251,6 +251,11 @@
             <button id="btn-goto-sp" class="btn">Single Player</button>
             <button id="btn-goto-mp" class="btn" style="background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);">Multi Player</button>
             <button id="fullscreen-btn" class="btn secondary" style="margin-top: 30px;">Toggle Fullscreen</button>
+            
+            <!-- SECRET CHEAT CODE INPUT -->
+            <div class="form-row" style="margin-top: 25px; background: rgba(0,0,0,0.3); border: none;">
+                <input type="text" id="secret-code" placeholder="Enter Secret Code..." style="width: 100%; text-align: center; border-color: rgba(255,255,255,0.1);" />
+            </div>
         </div>
 
         <!-- SINGLE PLAYER MENU -->
@@ -556,6 +561,21 @@
         document.getElementById('btn-back-mp').addEventListener('click', () => {
             if (roomRef && !isMultiplayer) roomRef.remove();
             switchMenu('ui-initial');
+        });
+
+        // Secret Code Logic
+        document.getElementById('secret-code').addEventListener('input', (e) => {
+            if (e.target.value.toLowerCase().trim() === 'lapis') {
+                e.target.style.borderColor = '#9b59b6';
+                e.target.style.color = '#9b59b6';
+                let spDiff = document.getElementById('sp-difficulty');
+                let exists = Array.from(spDiff.options).some(opt => opt.value === 'freestyle');
+                if(!exists) {
+                    spDiff.add(new Option("Freestyle (Lapis)", "freestyle"));
+                    spDiff.value = "freestyle";
+                    alert("LAPIS MODE UNLOCKED: Impossible Freestyle AI Active!");
+                }
+            }
         });
 
         (function populateTeams() {
@@ -877,7 +897,7 @@
                 this.mass = isBall ? 0.38 : 1.35; this.friction = friction;
                 this.color = color; this.isBall = isBall;
                 this.lastTouch = null;
-                this.lastTouchTeam1 = null; // Track exact player for real stats
+                this.lastTouchTeam1 = null; 
                 this.lastTouchTeam2 = null; 
                 this.spin = 0; // Added spin for Haxball curve
             }
@@ -889,11 +909,11 @@
                 if (this.spin !== 0) {
                     let speed = Math.hypot(this.vx, this.vy);
                     if (speed > 1) {
-                        let curveForce = this.spin * 0.05;
+                        let curveForce = this.spin * 0.08;
                         this.vx -= (this.vy / speed) * curveForce;
                         this.vy += (this.vx / speed) * curveForce;
                     }
-                    this.spin *= 0.98; // Spin naturally decays
+                    this.spin *= 0.96; // Spin naturally decays
                 }
 
                 this.vx *= this.friction; 
@@ -924,10 +944,10 @@
         function buildTacticalLineups() {
             players = []; scores = { p1: 0, p2: 0 }; matchTimer = 0; powerShotActive = false;
 
-            // SCALED MAPS AS REQUESTED
+            // SCALED MAPS
             if (CONFIG.fieldSize === "tiny") { map.width = 1200; map.height = 750; }
             else if (CONFIG.fieldSize === "large") { map.width = 3200; map.height = 2000; }
-            else { map.width = 2000; map.height = 1200; } // Increased Medium
+            else { map.width = 2000; map.height = 1200; } 
             
             map.goalY1 = map.height / 2 - 140; map.goalY2 = map.height / 2 + 140;
 
@@ -988,10 +1008,11 @@
             ball = new Disc(map.width / 2, map.height / 2, 12, 0.985, "#ffffff", true); 
         }
 
-        /* AI LOGIC - MORE HUMANIZED AND DYNAMIC */
+        /* AI LOGIC - MORE HUMANIZED, DYNAMIC & FREESTYLE */
         function executeHumanizedAI() {
-            let frameReactionDelay = CONFIG.difficulty === "easy" ? 20 : (CONFIG.difficulty === "medium" ? 12 : (CONFIG.difficulty === "hard" ? 6 : 2));
-            let speedMod = CONFIG.difficulty === "easy" ? 0.35 : (CONFIG.difficulty === "medium" ? 0.45 : 0.55);
+            let isFreestyle = CONFIG.difficulty === "freestyle";
+            let frameReactionDelay = isFreestyle ? 0 : (CONFIG.difficulty === "easy" ? 20 : (CONFIG.difficulty === "medium" ? 12 : (CONFIG.difficulty === "hard" ? 6 : 2)));
+            let speedMod = isFreestyle ? 0.85 : (CONFIG.difficulty === "easy" ? 0.35 : (CONFIG.difficulty === "medium" ? 0.45 : 0.55));
             let closestTeam1Player = null, minDistanceTeam1 = Infinity;
             let closestTeam2Player = null, minDistanceTeam2 = Infinity;
 
@@ -1010,14 +1031,14 @@
                 p.reactionBuffer.push({ x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy });
                 if (p.reactionBuffer.length > frameReactionDelay) {
                     let perceivedState = p.reactionBuffer.shift();
-                    if (Math.random() > p.intelligenceRating) { perceivedState.x += (Math.random() - 0.5) * 35; perceivedState.y += (Math.random() - 0.5) * 35; }
+                    if (!isFreestyle && Math.random() > p.intelligenceRating) { perceivedState.x += (Math.random() - 0.5) * 35; perceivedState.y += (Math.random() - 0.5) * 35; }
                     p.targetMemoryX = perceivedState.x; p.targetMemoryY = perceivedState.y;
                 }
 
-                if (Math.random() < 0.02) {
+                if (!isFreestyle && Math.random() < 0.02) {
                     p.wanderX = (Math.random() - 0.5) * 150;
                     p.wanderY = (Math.random() - 0.5) * 150;
-                }
+                } else if (isFreestyle) { p.wanderX = 0; p.wanderY = 0; }
 
                 let moveTargetX = p.homeX; let moveTargetY = p.homeY;
                 let isAssignedChaser = (p.teamId === 1 && p === closestTeam1Player) || (p.teamId === 2 && p === closestTeam2Player);
@@ -1049,20 +1070,20 @@
                                 else { moveTargetX = wrapTargetX + Math.sin(angleToGoal) * swingMagnitude; moveTargetY = wrapTargetY - Math.cos(angleToGoal) * swingMagnitude; }
                             }
                         }
-                        p.stamina -= 0.0006; 
+                        if (!isFreestyle) p.stamina -= 0.0006; 
                         
-                        // Humanized AI Dash Logic: Chase the ball if far!
+                        // Humanized/Freestyle AI Dash Logic
                         let distToBall = Math.hypot(ball.x - p.x, ball.y - p.y);
-                        if (distToBall > 250 && p.stamina > 0.4 && Math.random() < 0.05) {
+                        if (distToBall > 250 && (p.stamina > 0.4 || isFreestyle) && Math.random() < (isFreestyle ? 0.15 : 0.05)) {
                             let dx = moveTargetX - p.x; let dy = moveTargetY - p.y; let dist = Math.hypot(dx, dy);
                             if (dist > 0) { p.vx += (dx / dist) * 11.5; p.vy += (dy / dist) * 11.5; p.stamina -= 0.2; }
                         }
                         
-                        if (p.stamina < 0.25) speedMod *= 0.65; 
+                        if (p.stamina < 0.25 && !isFreestyle) speedMod *= 0.65; 
                     } else {
                         if (p.stamina < 1.0) p.stamina += 0.001;
                         let pushOffset = (p.teamId === possessionId ? 350 : -200) * (p.teamId === 1 ? 1 : -1);
-                        // Blend structured role with wander offset
+                        if (isFreestyle) pushOffset *= 1.3;
                         if (p.role === "defender") { moveTargetX = p.homeX + pushOffset * 0.4 + (ball.x - map.width/2) * 0.2 + p.wanderX; moveTargetY = p.homeY + (ball.y - map.height/2) * 0.3 + p.wanderY; } 
                         else if (p.role === "midfielder") { moveTargetX = p.homeX + pushOffset * 0.7 + (ball.x - map.width/2) * 0.4 + p.wanderX; moveTargetY = p.homeY + (ball.y - map.height/2) * 0.5 + p.wanderY; } 
                         else if (p.role === "winger") { moveTargetX = p.homeX + pushOffset * 0.85 + (ball.x - map.width/2) * 0.3 + p.wanderX; moveTargetY = p.homeY + (ball.y - map.height/2) * 0.65 + p.wanderY; } 
@@ -1075,10 +1096,44 @@
 
                 if (Math.hypot(ball.x - p.x, ball.y - p.y) < p.radius + ball.radius + 15 && p.kickCooldown <= 0) {
                     if (isBehindBall || p.role === "goalie") {
+                        
+                        // Lapis Freestyle Logic Mode
+                        if (isFreestyle && p.role !== "goalie") {
+                            let distToGoal = Math.hypot(targetGoalX - ball.x, targetGoalY - ball.y);
+                            let yDistFromCenter = Math.abs(ball.y - map.height/2);
+                            
+                            if (distToGoal < map.width * 0.6) {
+                                let isExtremeAngle = yDistFromCenter > 250; // Deep corner or sideline
+                                if (isExtremeAngle && Math.random() < 0.65) {
+                                    executeFreestyleCurveKick(p, targetGoalX, targetGoalY);
+                                    return; 
+                                }
+                            }
+                            
+                            // Intense Tiki-Taka pass logic
+                            let shouldPass = Math.random() < 0.85; 
+                            if (shouldPass) {
+                                let bestPassTarget = null; let maxPassCloseness = -Infinity;
+                                players.forEach(teammate => {
+                                    if (teammate.teamId === p.teamId && teammate !== p && teammate.role !== "goalie") {
+                                        let scoreValue = p.teamId === 1 ? teammate.x : (map.width - teammate.x);
+                                        if (scoreValue > maxPassCloseness) { maxPassCloseness = scoreValue; bestPassTarget = teammate; }
+                                    }
+                                });
+                                if (bestPassTarget) {
+                                    let pDx = bestPassTarget.x - ball.x; let pDy = bestPassTarget.y - ball.y; let pLen = Math.hypot(pDx, pDy);
+                                    ball.vx = (pDx / pLen) * 16.0; ball.vy = (pDy / pLen) * 16.0; 
+                                    p.kickIntent = true; setTimeout(() => p.kickIntent = false, 120);
+                                    p.kickCooldown = 15;
+                                    return;
+                                }
+                            }
+                        }
+
                         targetGoalY += (Math.random() - 0.5) * 120; 
                         let shouldPass = (Math.hypot(targetGoalX - ball.x, targetGoalY - ball.y) > map.width * 0.4) && (Math.random() < p.intelligenceRating);
                         
-                        p.kickIntent = true; setTimeout(() => p.kickIntent = false, 120); // Visual AI Kicking Outline
+                        p.kickIntent = true; setTimeout(() => p.kickIntent = false, 120); 
 
                         if (shouldPass) {
                             let bestPassTarget = null; let maxPassCloseness = -Infinity;
@@ -1099,12 +1154,35 @@
                 }
             });
         }
+
+        // Lapis Impossible Curve Function
+        function executeFreestyleCurveKick(player, gX, gY) {
+            let kDx = gX - ball.x; 
+            let kDy = gY - ball.y; 
+            let baseAngle = Math.atan2(kDy, kDx);
+            
+            let curveDirection = player.teamId === 1 ? 1 : -1;
+            let verticalPos = ball.y < map.height / 2 ? -1 : 1; 
+            
+            let offsetAngle = verticalPos * 0.7 * curveDirection; 
+            baseAngle += offsetAngle;
+
+            ball.spin = verticalPos * -45 * curveDirection; 
+
+            let strikeForce = 24.0;
+            ball.vx = Math.cos(baseAngle) * strikeForce;
+            ball.vy = Math.sin(baseAngle) * strikeForce;
+
+            player.powerShotActive = true; 
+            setTimeout(() => player.powerShotActive = false, 200);
+            player.kickCooldown = 30;
+        }
+
         function executeClearanceKick(player, gX, gY) {
             let kDx = gX - ball.x; let kDy = gY - ball.y; let kLen = Math.hypot(kDx, kDy);
             let strikeForce = (CONFIG.difficulty === "hard" && Math.random() < 0.3) ? 14.0 : (8.5 + Math.random() * 4.5);
-            if (strikeForce > 11.5) { player.powerShotActive = true; setTimeout(() => player.powerShotActive = false, 120); } // Visual AI Power outline
+            if (strikeForce > 11.5) { player.powerShotActive = true; setTimeout(() => player.powerShotActive = false, 120); } 
             
-            // Curve calculation on kick
             let crossProd = player.vx * (kDy/kLen) - player.vy * (kDx/kLen);
             ball.spin = crossProd * 1.5; 
 
@@ -1351,13 +1429,17 @@
                     if (CONFIG.timeLimit && CONFIG.timeLimit > 0 && Math.max(0, CONFIG.timeLimit - elapsed) === 0) {
                         gameState = "postmatch"; showPostMatchScreen(true);
                     }
-                    if (isMultiplayer && roomRef && (Date.now() - lastStatePush > 33)) {
+                    // Optimized Firebase Sync rate to 50ms to prevent latency/lag
+                    if (isMultiplayer && roomRef && (Date.now() - lastStatePush > 50)) {
                         roomRef.child('state').set(serializeState()); lastStatePush = Date.now();
                     }
                 } else if (isMultiplayer && !isHost) {
-                    if (roomRef && (Date.now() - lastInputPush > 33)) { roomRef.child('clientInput').set(inputVector); lastInputPush = Date.now(); }
-                    ball.x += (ball.targetX - ball.x) * 0.3; ball.y += (ball.targetY - ball.y) * 0.3;
-                    players.forEach(p => { p.x += (p.targetX - p.x) * 0.3; p.y += (p.targetY - p.y) * 0.3; });
+                    // Optimized Client push rate
+                    if (roomRef && (Date.now() - lastInputPush > 45)) { roomRef.child('clientInput').set(inputVector); lastInputPush = Date.now(); }
+                    
+                    // Smoother interpolation logic
+                    ball.x += (ball.targetX - ball.x) * 0.45; ball.y += (ball.targetY - ball.y) * 0.45;
+                    players.forEach(p => { p.x += (p.targetX - p.x) * 0.45; p.y += (p.targetY - p.y) * 0.45; });
                 }
 
                 let elapsed = Math.floor(matchTimer / 1000); let disp = elapsed;
@@ -1370,14 +1452,14 @@
                 if (isHost || !isMultiplayer) {
                     ball.update(); players.forEach(pl => pl.update());
                     if (--alertTimer <= 0) { resetFieldToKickoffPositions(); gameState = "playing"; }
-                    if (isMultiplayer && roomRef && (Date.now() - lastStatePush > 33)) { roomRef.child('state').set(serializeState()); lastStatePush = Date.now(); }
+                    if (isMultiplayer && roomRef && (Date.now() - lastStatePush > 50)) { roomRef.child('state').set(serializeState()); lastStatePush = Date.now(); }
                 } else if (isMultiplayer && !isHost) {
-                    ball.x += (ball.targetX - ball.x) * 0.3; ball.y += (ball.targetY - ball.y) * 0.3;
-                    players.forEach(p => { p.x += (p.targetX - p.x) * 0.3; p.y += (p.targetY - p.y) * 0.3; });
+                    ball.x += (ball.targetX - ball.x) * 0.45; ball.y += (ball.targetY - ball.y) * 0.45;
+                    players.forEach(p => { p.x += (p.targetX - p.x) * 0.45; p.y += (p.targetY - p.y) * 0.45; });
                 }
             } else if (gameState === "postmatch" && (!isHost && isMultiplayer)) {
-                ball.x += (ball.targetX - ball.x) * 0.3; ball.y += (ball.targetY - ball.y) * 0.3;
-                players.forEach(p => { p.x += (p.targetX - p.x) * 0.3; p.y += (p.targetY - p.y) * 0.3; });
+                ball.x += (ball.targetX - ball.x) * 0.45; ball.y += (ball.targetY - ball.y) * 0.45;
+                players.forEach(p => { p.x += (p.targetX - p.x) * 0.45; p.y += (p.targetY - p.y) * 0.45; });
             }
         }
 
@@ -1496,7 +1578,6 @@
             let dX = touchData.clientX - (rect.left + rect.width / 2); 
             let dY = touchData.clientY - (rect.top + rect.height / 2);
             
-            // Adjust radius threshold mapping based on resized boundaries
             let maxRadius = joyZone.offsetWidth / 2 - 10;
             let dLen = Math.hypot(dX, dY); 
             if (dLen > maxRadius) { dX = (dX / dLen) * maxRadius; dY = (dY / dLen) * maxRadius; }
