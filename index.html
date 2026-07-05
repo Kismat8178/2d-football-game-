@@ -589,7 +589,12 @@
             statusLabel.textContent = "Generating Room Coordinates...";
             
             roomRef = db.ref('rooms/' + roomId);
-            roomRef.remove().then(() => {
+            
+            // Fix: Initialize the room so it exists for the client to find it!
+            roomRef.set({
+                start: false,
+                hostLeft: false
+            }).then(() => {
                 // Host disconnect cleanup
                 roomRef.onDisconnect().remove();
                 roomRef.child('hostLeft').onDisconnect().set(true);
