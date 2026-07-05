@@ -419,6 +419,7 @@
                             <th>Player Name</th>
                             <th>Team</th>
                             <th>Goals</th>
+                            <th>Rating</th>
                         </tr>
                     </thead>
                     <tbody id="stats-tbody">
@@ -590,19 +591,16 @@
             
             roomRef = db.ref('rooms/' + roomId);
             
-            // Fix: Initialize the room so it exists for the client to find it!
             roomRef.set({
                 start: false,
                 hostLeft: false
             }).then(() => {
-                // Host disconnect cleanup
                 roomRef.onDisconnect().remove();
                 roomRef.child('hostLeft').onDisconnect().set(true);
 
                 statusLabel.textContent = "Waiting for Player 2 to join...";
                 document.getElementById('btn-create-room').disabled = true;
                 
-                // Wait for Player 2 to join
                 roomRef.child('p2Config').on('value', snap => {
                     if(snap.exists()) {
                         let p2Data = snap.val();
@@ -626,14 +624,12 @@
                         isHost = true;
                         isMultiplayer = true;
                         
-                        // Setup gameplay listeners
                         roomRef.child('clientInput').on('value', inputSnap => { if(inputSnap.exists()) remoteInput = inputSnap.val(); });
                         roomRef.child('clientActions').on('child_added', actionSnap => {
                             let a = actionSnap.val();
                             if(Date.now() - a.t < 2000) handleRemoteAction(a.action, a.vector);
                         });
 
-                        // Watch for Client disconnecting to post in chat
                         roomRef.child('clientLeft').on('value', leftSnap => {
                             if (leftSnap.val() === true) {
                                 roomRef.child('chats').push({ sender: "System", text: `${CONFIG.p2Name} left the game.`, t: Date.now() });
@@ -670,10 +666,8 @@
                 isHost = false;
                 isMultiplayer = true;
 
-                // Mark client as left if tab is closed
                 roomRef.child('clientLeft').onDisconnect().set(true);
 
-                // Monitor if Host leaves the game to trigger popup
                 roomRef.child('hostLeft').on('value', hSnap => {
                     if (hSnap.val() === true) {
                         document.getElementById('host-left-screen').classList.remove('hidden');
@@ -681,7 +675,6 @@
                     }
                 });
 
-                // Trigger the host to start the game
                 roomRef.child('p2Config').set({
                     team: document.getElementById('mp-p1-team').value,
                     name: document.getElementById('mp-name').value || "Client",
@@ -710,14 +703,22 @@
             } else if (action === 'kick') {
                 remoteKickIntent = true; setTimeout(() => remoteKickIntent = false, 160);
             } else if (action === 'power') {
-                remotePowerShotActive = true;
+                remotePowerShotActive = true; setTimeout(() => remotePowerShotActive = false, 200);
             }
         }
 
+        // Expanded state serialization to include visual state outlines and ball curve/spin without breaking FB structure
         function serializeState() {
-            let pl = players.map(p => [Math.round(p.x), Math.round(p.y), Number(p.vx.toFixed(2)), Number(p.vy.toFixed(2)), Number(p.stamina.toFixed(2))]);
+            let pl = players.map(p => [
+                Math.round(p.x), 
+                Math.round(p.y), 
+                Number(p.vx.toFixed(2)), 
+                Number(p.vy.toFixed(2)), 
+                Number(p.stamina.toFixed(2)),
+                (p.powerShotActive || (p.teamId === 2 && remotePowerShotActive)) ? 2 : (p.kickIntent || (p.teamId === 2 && remoteKickIntent)) ? 1 : 0
+            ]);
             return {
-                b: [Math.round(ball.x), Math.round(ball.y), Number(ball.vx.toFixed(2)), Number(ball.vy.toFixed(2))],
+                b: [Math.round(ball.x), Math.round(ball.y), Number(ball.vx.toFixed(2)), Number(ball.vy.toFixed(2)), Number((ball.spin || 0).toFixed(2))],
                 p: pl, s: [scores.p1, scores.p2], t: Math.round(matchTimer), g: gameState, a: alertText
             };
         }
@@ -726,6 +727,7 @@
             if (!data) return;
             if (Math.hypot(ball.x - data.b[0], ball.y - data.b[1]) > 300) { ball.x = data.b[0]; ball.y = data.b[1]; }
             ball.targetX = data.b[0]; ball.targetY = data.b[1]; ball.vx = data.b[2]; ball.vy = data.b[3];
+            ball.spin = data.b[4] || 0; // Sync ball spin
             
             for(let i=0; i<players.length; i++){
                 if(!players[i] || !data.p[i]) continue;
@@ -735,6 +737,7 @@
                 players[i].targetX = data.p[i][0]; players[i].targetY = data.p[i][1];
                 players[i].vx = data.p[i][2]; players[i].vy = data.p[i][3];
                 players[i].stamina = data.p[i][4];
+                players[i].visualState = data.p[i][5] || 0; // Sync visual rings
             }
             scores.p1 = data.s[0]; scores.p2 = data.s[1];
             matchTimer = data.t;
@@ -785,14 +788,12 @@
             roomRef.child('chats').on('child_added', snap => {
                 let msg = snap.val(); let div = document.createElement('div');
                 
-                // System message is yellow, Host is green, Client is blue
                 let color = msg.sender === "System" ? '#f1c40f' : (msg.sender === CONFIG.p1Name ? '#2ecc71' : '#3498db');
                 div.innerHTML = `<strong style="color:${color}">${msg.sender}:</strong> ${msg.text}`;
                 
                 document.getElementById('chat-log').appendChild(div);
                 document.getElementById('chat-log').scrollTop = document.getElementById('chat-log').scrollHeight; 
                 
-                // Show notification dot if chat is hidden
                 if (chatContainer.classList.contains('hidden')) {
                     chatNotification.classList.remove('hidden');
                 }
@@ -803,7 +804,7 @@
         const ctx = canvas.getContext('2d', { alpha: false });
         
         let CONFIG = { difficulty: "medium", p1Team: TEAMS[0], p2Team: TEAMS[1], teamSize: 5, timeLimit: 900, fieldSize: "medium", addBots: true, p1Name: "Player", p2Name: "Bot", p1Role: "forward", p2Role: "forward" };
-        let map = { width: 1800, height: 1100, goalY1: 420, goalY2: 680, goalDepth: 65 };
+        let map = { width: 2000, height: 1200, goalY1: 460, goalY2: 740, goalDepth: 65 };
         let players = []; let ball = null;
         let camera = { x: 0, y: 0, zoom: 0.55 }; 
         let gameState = "menu";
@@ -869,7 +870,6 @@
             e.target.textContent = spectatorCamMode === "follow" ? "Cam: Follow Ball" : "Cam: Full Field";
         });
 
-
         class Disc {
             constructor(x, y, radius, friction, color, isBall = false) {
                 this.x = x; this.y = y; this.targetX = x; this.targetY = y;
@@ -877,8 +877,28 @@
                 this.mass = isBall ? 0.38 : 1.35; this.friction = friction;
                 this.color = color; this.isBall = isBall;
                 this.lastTouch = null;
+                this.lastTouchTeam1 = null; // Track exact player for real stats
+                this.lastTouchTeam2 = null; 
+                this.spin = 0; // Added spin for Haxball curve
             }
-            update() { this.x += this.vx; this.y += this.vy; this.vx *= this.friction; this.vy *= this.friction; }
+            update() { 
+                this.x += this.vx; 
+                this.y += this.vy; 
+                
+                // HAXBALL STYLE CURVE/MAGNUS EFFECT
+                if (this.spin !== 0) {
+                    let speed = Math.hypot(this.vx, this.vy);
+                    if (speed > 1) {
+                        let curveForce = this.spin * 0.05;
+                        this.vx -= (this.vy / speed) * curveForce;
+                        this.vy += (this.vx / speed) * curveForce;
+                    }
+                    this.spin *= 0.98; // Spin naturally decays
+                }
+
+                this.vx *= this.friction; 
+                this.vy *= this.friction; 
+            }
         }
 
         class Player extends Disc {
@@ -890,22 +910,26 @@
                 this.speed = 0.52;
                 
                 this.playerName = playerName || (isAI ? `Bot_${Math.floor(Math.random()*90 + 10)}` : "Player");
-                this.stats = { goals: 0 };
+                this.stats = { goals: 0, touches: 0 };
+                this.trail = []; // DASH TRAIL 
 
                 this.reactionBuffer = []; this.targetMemoryX = x; this.targetMemoryY = y;
                 this.patienceTicks = Math.random() * 60; this.intelligenceRating = Math.random() * 0.4 + 0.6; 
                 this.stamina = 1.0; this.currentIntention = "positioning"; this.kickCooldown = 0;       
+                
+                this.wanderX = 0; this.wanderY = 0;
             }
         }
 
         function buildTacticalLineups() {
             players = []; scores = { p1: 0, p2: 0 }; matchTimer = 0; powerShotActive = false;
 
+            // SCALED MAPS AS REQUESTED
             if (CONFIG.fieldSize === "tiny") { map.width = 1200; map.height = 750; }
-            else if (CONFIG.fieldSize === "large") { map.width = 2400; map.height = 1450; }
-            else { map.width = 1800; map.height = 1100; }
+            else if (CONFIG.fieldSize === "large") { map.width = 3200; map.height = 2000; }
+            else { map.width = 2000; map.height = 1200; } // Increased Medium
             
-            map.goalY1 = map.height / 2 - 130; map.goalY2 = map.height / 2 + 130;
+            map.goalY1 = map.height / 2 - 140; map.goalY2 = map.height / 2 + 140;
 
             let size = CONFIG.teamSize;
             if(!CONFIG.addBots && isMultiplayer) size = 1; 
@@ -921,7 +945,6 @@
                 return ["forward"];
             };
 
-            // TEAM 1 SETUP (Host/SP)
             let r1 = getRolesForSize(size);
             if (CONFIG.p1Role !== "spectator") {
                 let idx = r1.indexOf(CONFIG.p1Role);
@@ -942,7 +965,6 @@
                 players.push(p);
             }
 
-            // TEAM 2 SETUP (Client/AI)
             let r2 = getRolesForSize(size);
             if (isMultiplayer && CONFIG.p2Role !== "spectator") {
                 let idx = r2.indexOf(CONFIG.p2Role);
@@ -966,7 +988,7 @@
             ball = new Disc(map.width / 2, map.height / 2, 12, 0.985, "#ffffff", true); 
         }
 
-        /* AI LOGIC */
+        /* AI LOGIC - MORE HUMANIZED AND DYNAMIC */
         function executeHumanizedAI() {
             let frameReactionDelay = CONFIG.difficulty === "easy" ? 20 : (CONFIG.difficulty === "medium" ? 12 : (CONFIG.difficulty === "hard" ? 6 : 2));
             let speedMod = CONFIG.difficulty === "easy" ? 0.35 : (CONFIG.difficulty === "medium" ? 0.45 : 0.55);
@@ -990,6 +1012,11 @@
                     let perceivedState = p.reactionBuffer.shift();
                     if (Math.random() > p.intelligenceRating) { perceivedState.x += (Math.random() - 0.5) * 35; perceivedState.y += (Math.random() - 0.5) * 35; }
                     p.targetMemoryX = perceivedState.x; p.targetMemoryY = perceivedState.y;
+                }
+
+                if (Math.random() < 0.02) {
+                    p.wanderX = (Math.random() - 0.5) * 150;
+                    p.wanderY = (Math.random() - 0.5) * 150;
                 }
 
                 let moveTargetX = p.homeX; let moveTargetY = p.homeY;
@@ -1022,14 +1049,24 @@
                                 else { moveTargetX = wrapTargetX + Math.sin(angleToGoal) * swingMagnitude; moveTargetY = wrapTargetY - Math.cos(angleToGoal) * swingMagnitude; }
                             }
                         }
-                        p.stamina -= 0.0006; if (p.stamina < 0.25) speedMod *= 0.65; 
+                        p.stamina -= 0.0006; 
+                        
+                        // Humanized AI Dash Logic: Chase the ball if far!
+                        let distToBall = Math.hypot(ball.x - p.x, ball.y - p.y);
+                        if (distToBall > 250 && p.stamina > 0.4 && Math.random() < 0.05) {
+                            let dx = moveTargetX - p.x; let dy = moveTargetY - p.y; let dist = Math.hypot(dx, dy);
+                            if (dist > 0) { p.vx += (dx / dist) * 11.5; p.vy += (dy / dist) * 11.5; p.stamina -= 0.2; }
+                        }
+                        
+                        if (p.stamina < 0.25) speedMod *= 0.65; 
                     } else {
                         if (p.stamina < 1.0) p.stamina += 0.001;
-                        let pushOffset = (p.teamId === possessionId ? 250 : -150) * (p.teamId === 1 ? 1 : -1);
-                        if (p.role === "defender") { moveTargetX = p.homeX + pushOffset * 0.4 + (ball.x - map.width/2) * 0.2; moveTargetY = p.homeY + (ball.y - map.height/2) * 0.3; } 
-                        else if (p.role === "midfielder") { moveTargetX = p.homeX + pushOffset * 0.7 + (ball.x - map.width/2) * 0.4; moveTargetY = p.homeY + (ball.y - map.height/2) * 0.5; } 
-                        else if (p.role === "winger") { moveTargetX = p.homeX + pushOffset * 0.85 + (ball.x - map.width/2) * 0.3; moveTargetY = p.homeY + (ball.y - map.height/2) * 0.65; } 
-                        else if (p.role === "forward") { moveTargetX = p.homeX + pushOffset * 1.0 + (ball.x - map.width/2) * 0.1; moveTargetY = p.homeY + (ball.y - map.height/2) * 0.4; }
+                        let pushOffset = (p.teamId === possessionId ? 350 : -200) * (p.teamId === 1 ? 1 : -1);
+                        // Blend structured role with wander offset
+                        if (p.role === "defender") { moveTargetX = p.homeX + pushOffset * 0.4 + (ball.x - map.width/2) * 0.2 + p.wanderX; moveTargetY = p.homeY + (ball.y - map.height/2) * 0.3 + p.wanderY; } 
+                        else if (p.role === "midfielder") { moveTargetX = p.homeX + pushOffset * 0.7 + (ball.x - map.width/2) * 0.4 + p.wanderX; moveTargetY = p.homeY + (ball.y - map.height/2) * 0.5 + p.wanderY; } 
+                        else if (p.role === "winger") { moveTargetX = p.homeX + pushOffset * 0.85 + (ball.x - map.width/2) * 0.3 + p.wanderX; moveTargetY = p.homeY + (ball.y - map.height/2) * 0.65 + p.wanderY; } 
+                        else if (p.role === "forward") { moveTargetX = p.homeX + pushOffset * 1.0 + (ball.x - map.width/2) * 0.1 + p.wanderX; moveTargetY = p.homeY + (ball.y - map.height/2) * 0.4 + p.wanderY; }
                     }
                 }
 
@@ -1040,6 +1077,9 @@
                     if (isBehindBall || p.role === "goalie") {
                         targetGoalY += (Math.random() - 0.5) * 120; 
                         let shouldPass = (Math.hypot(targetGoalX - ball.x, targetGoalY - ball.y) > map.width * 0.4) && (Math.random() < p.intelligenceRating);
+                        
+                        p.kickIntent = true; setTimeout(() => p.kickIntent = false, 120); // Visual AI Kicking Outline
+
                         if (shouldPass) {
                             let bestPassTarget = null; let maxPassCloseness = -Infinity;
                             players.forEach(teammate => {
@@ -1062,6 +1102,12 @@
         function executeClearanceKick(player, gX, gY) {
             let kDx = gX - ball.x; let kDy = gY - ball.y; let kLen = Math.hypot(kDx, kDy);
             let strikeForce = (CONFIG.difficulty === "hard" && Math.random() < 0.3) ? 14.0 : (8.5 + Math.random() * 4.5);
+            if (strikeForce > 11.5) { player.powerShotActive = true; setTimeout(() => player.powerShotActive = false, 120); } // Visual AI Power outline
+            
+            // Curve calculation on kick
+            let crossProd = player.vx * (kDy/kLen) - player.vy * (kDx/kLen);
+            ball.spin = crossProd * 1.5; 
+
             ball.vx = (kDx / kLen) * strikeForce + player.vx * 0.4; ball.vy = (kDy / kLen) * strikeForce + player.vy * 0.4; player.kickCooldown = 40;
         }
 
@@ -1077,8 +1123,14 @@
                         let localIsKick = (p.teamId === 1) ? kickIntent : remoteKickIntent;
                         let dx = ball.x - p.x; let dy = ball.y - p.y; let len = Math.hypot(dx, dy);
                         
-                        if (localIsPower) { ball.vx = (dx / len) * 22.0; ball.vy = (dy / len) * 22.0; if(p.teamId === 1) powerShotActive = false; else remotePowerShotActive = false; }
-                        else if (localIsKick) { ball.vx = (dx / len) * 11.5; ball.vy = (dy / len) * 11.5; }
+                        if (localIsPower || localIsKick) { 
+                            let crossProd = p.vx * (dy/len) - p.vy * (dx/len);
+                            ball.spin = crossProd * 1.8; // Apply Haxball style slice curve
+
+                            ball.vx = (dx / len) * (localIsPower ? 22.0 : 11.5); 
+                            ball.vy = (dy / len) * (localIsPower ? 22.0 : 11.5); 
+                            if(p.teamId === 1) powerShotActive = false; else remotePowerShotActive = false; 
+                        }
                     }
                 }
             });
@@ -1097,8 +1149,16 @@
                 d1.vx -= impulse * d2.mass * nx; d1.vy -= impulse * d2.mass * ny;
                 d2.vx += impulse * d1.mass * nx; d2.vy += impulse * d1.mass * ny;
                 
-                if (d1.isBall && !d2.isBall) d1.lastTouch = d2;
-                else if (d2.isBall && !d1.isBall) d2.lastTouch = d1;
+                // Track proper stats
+                if (d1.isBall && !d2.isBall) {
+                    d1.lastTouch = d2;
+                    if (d2.teamId === 1) d1.lastTouchTeam1 = d2; else d1.lastTouchTeam2 = d2;
+                    d2.stats.touches = (d2.stats.touches || 0) + 1;
+                } else if (d2.isBall && !d1.isBall) {
+                    d2.lastTouch = d1;
+                    if (d1.teamId === 1) d2.lastTouchTeam1 = d1; else d2.lastTouchTeam2 = d1;
+                    d1.stats.touches = (d1.stats.touches || 0) + 1;
+                }
                 return true;
             }
             return false;
@@ -1175,6 +1235,40 @@
                 powerTrail.forEach((t, i) => { ctx.beginPath(); ctx.arc(t.x, t.y, ball.radius * (i / powerTrail.length), 0, Math.PI * 2); ctx.fillStyle = `rgba(241, 196, 15, ${(i / powerTrail.length) * 0.4})`; ctx.fill(); });
 
                 players.forEach(p => {
+                    // Update and draw dash trail
+                    if (!p.trail) p.trail = [];
+                    if (Math.hypot(p.vx, p.vy) > 4) {
+                        p.trail.push({x: p.x, y: p.y});
+                        if (p.trail.length > 8) p.trail.shift();
+                    } else if (p.trail.length > 0) {
+                        p.trail.shift();
+                    }
+
+                    if (p.trail.length > 1) {
+                        ctx.beginPath();
+                        ctx.moveTo(p.trail[0].x, p.trail[0].y);
+                        for (let i = 1; i < p.trail.length; i++) ctx.lineTo(p.trail[i].x, p.trail[i].y);
+                        ctx.strokeStyle = `rgba(255,255,255,0.25)`;
+                        ctx.lineWidth = p.radius * 0.8;
+                        ctx.lineCap = "round";
+                        ctx.lineJoin = "round";
+                        ctx.stroke();
+                    }
+
+                    // Power and Kick Action Glows
+                    let vState = p.visualState || 0;
+                    let isPower = p.powerShotActive || (p.isLocalHuman && powerShotActive) || (p.teamId === 2 && !p.isAI && remotePowerShotActive) || vState === 2;
+                    let isKick = p.kickIntent || (p.isLocalHuman && kickIntent) || (p.teamId === 2 && !p.isAI && remoteKickIntent) || vState === 1;
+
+                    if (isPower) {
+                        ctx.beginPath(); ctx.arc(p.x, p.y, p.radius + 6, 0, Math.PI * 2);
+                        ctx.strokeStyle = "rgba(231, 76, 60, 0.9)"; ctx.lineWidth = 4; ctx.stroke();
+                    } else if (isKick) {
+                        ctx.beginPath(); ctx.arc(p.x, p.y, p.radius + 6, 0, Math.PI * 2);
+                        ctx.strokeStyle = "rgba(255, 255, 255, 0.9)"; ctx.lineWidth = 4; ctx.stroke();
+                    }
+
+                    // Core Body
                     ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 6;
                     ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill(); ctx.restore();
                     ctx.lineWidth = 4; ctx.strokeStyle = p.isLocalHuman ? "#f1c40f" : "#ffffff"; ctx.stroke();
@@ -1289,17 +1383,23 @@
 
         function processGoalEventSequence(winningFactionID) {
             gameState = "goal"; alertTimer = 160;
+            
+            // Accurately attribute goal based on the last explicit team touch
+            let scorer = null;
+            if (winningFactionID === 1) scorer = ball.lastTouchTeam1;
+            else scorer = ball.lastTouchTeam2;
+
+            if (scorer) scorer.stats.goals++;
+
             if (winningFactionID === 1) { scores.p1++; alertText = `${CONFIG.p1Team.name.toUpperCase()} SCORES!`; } 
             else { scores.p2++; alertText = `${CONFIG.p2Team.name.toUpperCase()} SCORES!`; }
             
-            if(ball.lastTouch) ball.lastTouch.stats.goals++;
-
             document.getElementById('hud-p1-score').textContent = scores.p1;
             document.getElementById('hud-p2-score').textContent = scores.p2;
         }
 
         function resetFieldToKickoffPositions() {
-            powerShotActive = false; ball.x = map.width / 2; ball.y = map.height / 2; ball.targetX = ball.x; ball.targetY = ball.y; ball.vx = 0; ball.vy = 0; ball.lastTouch = null;
+            powerShotActive = false; ball.x = map.width / 2; ball.y = map.height / 2; ball.targetX = ball.x; ball.targetY = ball.y; ball.vx = 0; ball.vy = 0; ball.lastTouch = null; ball.lastTouchTeam1 = null; ball.lastTouchTeam2 = null; ball.spin = 0;
             players.forEach(p => { p.x = p.homeX; p.y = p.homeY; p.targetX = p.x; p.targetY = p.y; p.vx = 0; p.vy = 0; p.reactionBuffer = []; p.stamina = 1.0; });
         }
 
@@ -1311,11 +1411,11 @@
             document.getElementById('post-match-score').textContent = `${scores.p1} - ${scores.p2}`;
             
             if (isMultiplayer && isHost && isHostBroadcast) {
-                let finalStats = players.map(p => ({ name: p.playerName, teamId: p.teamId, goals: p.stats.goals }));
+                let finalStats = players.map(p => ({ name: p.playerName, teamId: p.teamId, goals: p.stats.goals, touches: p.stats.touches || 0 }));
                 roomRef.child('finalStats').set(finalStats);
                 renderStatsTable(finalStats);
             } else if (!isMultiplayer) {
-                let localStats = players.map(p => ({ name: p.playerName, teamId: p.teamId, goals: p.stats.goals }));
+                let localStats = players.map(p => ({ name: p.playerName, teamId: p.teamId, goals: p.stats.goals, touches: p.stats.touches || 0 }));
                 renderStatsTable(localStats);
             }
 
@@ -1325,9 +1425,11 @@
 
         function renderStatsTable(statsArray) {
             let sorted = statsArray.sort((a,b) => b.goals - a.goals);
-            document.getElementById('stats-tbody').innerHTML = sorted.map(s => 
-                `<tr><td>${s.name}</td><td>${s.teamId === 1 ? CONFIG.p1Team.name : CONFIG.p2Team.name}</td><td style="color:#f1c40f; font-weight:bold;">${s.goals}</td></tr>`
-            ).join('');
+            document.getElementById('stats-tbody').innerHTML = sorted.map(s => {
+                // Calculate beautiful out of 10 rating based on touches and goals
+                let rating = Math.min(10.0, 5.0 + (s.goals * 1.5) + ((s.touches || 0) * 0.1)).toFixed(1);
+                return `<tr><td>${s.name}</td><td>${s.teamId === 1 ? CONFIG.p1Team.name : CONFIG.p2Team.name}</td><td style="color:#f1c40f; font-weight:bold;">${s.goals}</td><td style="color:#2ecc71; font-weight:bold;">${rating}</td></tr>`
+            }).join('');
         }
 
         // Rematch Request Handlers
@@ -1359,7 +1461,7 @@
             document.getElementById('post-match-screen').classList.add('hidden');
             resetFieldToKickoffPositions();
             scores = { p1: 0, p2: 0 }; matchTimer = 0;
-            players.forEach(p => p.stats.goals = 0);
+            players.forEach(p => { p.stats.goals = 0; p.stats.touches = 0; });
             gameState = "playing";
         }
 
