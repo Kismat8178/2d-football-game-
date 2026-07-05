@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -154,59 +153,57 @@
         }
 
         .btn:active { transform: scale(0.96); box-shadow: 0 5px 15px rgba(0,0,0, 0.3); }
-
         .btn:disabled { background: #7f8c8d; cursor: not-allowed; transform: none; box-shadow: none; }
 
         /* =========================================================================
            GAME FIELD DISPLAY AND HUD OVERLAYS
            ========================================================================= */
         #game-container { position: relative; width: 100%; height: 100%; background-color: #111a13; }
+        
         #top-header {
-            position: absolute; top: 0; left: 0; width: 100%; height: 70px;
+            position: absolute; top: 0; left: 0; width: 100%; height: 50px;
             background-color: #0c100d; border-bottom: 2px solid rgba(46, 204, 113, 0.3);
             display: flex; justify-content: center; align-items: center; z-index: 100;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6); gap: 15px;
         }
-        #game-area { position: absolute; top: 70px; left: 0; width: 100%; height: calc(100% - 70px); overflow: hidden; }
+        
+        #game-area { position: absolute; top: 50px; left: 0; width: 100%; height: calc(100% - 50px); overflow: hidden; }
         canvas { display: block; width: 100%; height: 100%; image-rendering: optimizeSpeed; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 15px; }
         .interactive { pointer-events: auto; }
 
         .scoreboard {
             background: rgba(10, 18, 14, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            padding: 10px 25px; border-radius: 30px; display: flex; align-items: center; gap: 20px;
-            font-family: 'Courier New', Courier, monospace; font-size: 1.4rem; font-weight: 900;
+            padding: 5px 15px; border-radius: 30px; display: flex; align-items: center; gap: 12px;
+            font-family: 'Courier New', Courier, monospace; font-size: 1.1rem; font-weight: 900;
             border: 2px solid rgba(46, 204, 113, 0.3); color: #ffffff; box-shadow: 0 8px 25px rgba(0,0,0,0.6);
         }
-        .team-indicator { display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin: 0 8px; border: 2px solid rgba(255,255,255,0.5); }
-        #pause-btn { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 0.9rem; font-weight: bold; display: flex; justify-content: center; align-items: center; transition: all 0.2s; }
-        #pause-btn:active { background: rgba(255,255,255,0.3); transform: scale(0.9); }
+        .team-indicator { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin: 0 4px; border: 2px solid rgba(255,255,255,0.5); }
+        
+        .hud-side-btn {
+            background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; font-weight: bold; display: flex; justify-content: center; align-items: center; transition: all 0.2s; pointer-events: auto;
+        }
+        .hud-side-btn:active { background: rgba(255,255,255,0.3); transform: scale(0.9); }
+        
+        #chat-notification {
+            position: absolute; top: -3px; right: -3px; width: 12px; height: 12px; background: #e74c3c; border-radius: 50%; box-shadow: 0 0 5px rgba(0,0,0,0.8);
+        }
 
         /* Post Match Stats Table */
-        .stats-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-            color: #ecf0f1;
-            font-size: 0.95rem;
-        }
-        .stats-table th, .stats-table td {
-            padding: 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            text-align: left;
-        }
-        .stats-table th { color: #2ecc71; text-transform: uppercase; font-size: 0.85rem; }
+        .stats-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; color: #ecf0f1; font-size: 0.95rem; }
+        .stats-table th, .stats-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
+        .stats-table th { color: #2ecc71; text-transform: uppercase; font-size: 0.80rem; }
         .stats-container { max-height: 250px; overflow-y: auto; margin-bottom: 15px; }
         .stats-container::-webkit-scrollbar { width: 6px; }
         .stats-container::-webkit-scrollbar-thumb { background: #2ecc71; border-radius: 3px; }
+        .room-row:hover { background-color: rgba(46, 204, 113, 0.2); }
 
         /* Firebase Live Chat */
         #chat-container {
-            position: absolute; top: 15px; left: 15px; width: 280px; z-index: 200;
-            background: rgba(10, 15, 12, 0.75); border-radius: 12px; padding: 12px; pointer-events: auto;
-            display: flex; flex-direction: column; transition: opacity 0.4s ease; opacity: 0.3; backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.1);
+            position: absolute; top: 15px; right: 15px; width: 280px; z-index: 200;
+            background: rgba(10, 15, 12, 0.85); border-radius: 12px; padding: 12px; pointer-events: auto;
+            display: flex; flex-direction: column; backdrop-filter: blur(6px); border: 1px solid rgba(46,204,113,0.5);
         }
-        #chat-container:focus-within, #chat-container.active { opacity: 1; }
         #chat-log { max-height: 120px; overflow-y: auto; font-size: 0.85rem; color: #ecf0f1; margin-bottom: 8px; text-shadow: 1px 1px 2px #000; display: flex; flex-direction: column; gap: 5px; }
         #chat-log::-webkit-scrollbar { width: 4px; }
         #chat-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 2px; }
@@ -215,25 +212,30 @@
         #chat-send { background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: #fff; border: none; border-radius: 6px; padding: 0 12px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 0.75rem; }
 
         /* Dynamic Controls */
-        #controls-container { display: flex; justify-content: space-between; align-items: flex-end; width: 100%; position: absolute; bottom: 30px; left: 0; padding: 0 35px; z-index: 50; }
-        #joystick-zone { width: 150px; height: 150px; position: relative; background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%); border-radius: 50%; }
-        #joystick-base { width: 120px; height: 120px; background: rgba(20, 30, 24, 0.4); border: 2px solid rgba(46, 204, 113, 0.3); border-radius: 50%; position: absolute; top: 15px; left: 15px; backdrop-filter: blur(5px); }
-        #joystick-stick { width: 50px; height: 50px; background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%); border-radius: 50%; position: absolute; top: 50px; left: 50px; box-shadow: 0 8px 20px rgba(0,0,0,0.5), inset 0 -4px 8px rgba(0,0,0,0.2); border: 2px solid #ffffff; }
-        #action-buttons { display: flex; gap: 18px; }
-        .action-btn { width: 75px; height: 75px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.3); color: white; font-weight: 900; font-size: 0.85rem; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; background: rgba(0, 0, 0, 0.5); box-shadow: 0 8px 20px rgba(0,0,0,0.4); backdrop-filter: blur(5px); text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        #controls-container { display: flex; justify-content: space-between; align-items: flex-end; width: 100%; position: absolute; bottom: 15px; left: 0; padding: 0 20px; z-index: 50; }
+        #joystick-zone { width: 120px; height: 120px; position: relative; background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%); border-radius: 50%; }
+        #joystick-base { width: 90px; height: 90px; background: rgba(20, 30, 24, 0.4); border: 2px solid rgba(46, 204, 113, 0.3); border-radius: 50%; position: absolute; top: 15px; left: 15px; backdrop-filter: blur(5px); }
+        #joystick-stick { width: 40px; height: 40px; background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%); border-radius: 50%; position: absolute; top: 40px; left: 40px; box-shadow: 0 8px 20px rgba(0,0,0,0.5), inset 0 -4px 8px rgba(0,0,0,0.2); border: 2px solid #ffffff; }
+        #action-buttons { display: flex; gap: 12px; }
+        
+        .action-btn { width: 55px; height: 55px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.3); color: white; font-weight: 900; font-size: 0.75rem; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; background: rgba(0, 0, 0, 0.5); box-shadow: 0 8px 20px rgba(0,0,0,0.4); backdrop-filter: blur(5px); text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
         #btn-dash { background: radial-gradient(circle, rgba(41, 128, 185, 0.9) 0%, rgba(31, 97, 141, 0.9) 100%); }
-        #btn-shoot { background: radial-gradient(circle, rgba(230, 126, 34, 0.9) 0%, rgba(211, 84, 0, 0.9) 100%); width: 85px; height: 85px; font-size: 1rem; border-color: rgba(243, 156, 18, 0.6); }
+        #btn-shoot { background: radial-gradient(circle, rgba(230, 126, 34, 0.9) 0%, rgba(211, 84, 0, 0.9) 100%); width: 65px; height: 65px; font-size: 0.85rem; border-color: rgba(243, 156, 18, 0.6); }
         #btn-power { background: radial-gradient(circle, rgba(231, 76, 60, 0.9) 0%, rgba(192, 57, 43, 0.9) 100%); }
         .cooldown-overlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: rgba(0, 0, 0, 0.8); transition: height 0.1s linear; }
         
         #spectator-ui { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 200; }
 
-        @media (max-width: 700px) {
-            #controls-container { padding: 0 15px; bottom: 20px; }
-            .action-btn { width: 60px; height: 60px; font-size: 0.7rem; }
-            #btn-shoot { width: 70px; height: 70px; font-size: 0.8rem; }
-            #joystick-zone { transform: scale(0.85); transform-origin: bottom left; }
-            #chat-container { width: 220px; }
+        @media (max-width: 700px) or (orientation: portrait) {
+            #controls-container { bottom: 10px; padding: 0 10px; }
+            #joystick-zone { width: 100px; height: 100px; transform: none; }
+            #joystick-base { width: 70px; height: 70px; top: 15px; left: 15px; }
+            #joystick-stick { width: 34px; height: 34px; top: 33px; left: 33px; }
+            
+            .action-btn { width: 45px; height: 45px; font-size: 0.65rem; }
+            #btn-shoot { width: 55px; height: 55px; font-size: 0.75rem; }
+            
+            #chat-container { width: 220px; right: 10px; }
             #spectator-ui button { font-size: 0.9rem; padding: 10px 20px; }
         }
     </style>
@@ -317,65 +319,79 @@
             <button id="btn-back-sp" class="btn secondary">Back</button>
         </div>
 
-        <!-- MULTI PLAYER MENU -->
-        <div id="ui-mp" class="menu-container hidden">
-            <h2 style="color:#8e44ad;">Multi Player</h2>
-            <div class="form-row">
-                <label>Select Name</label>
-                <input type="text" id="mp-name" placeholder="Enter Name" maxlength="12" value="Player" />
-            </div>
-            <div class="form-row">
-                <label>Select Mode</label>
-                <select id="mp-team-size">
-                    <option value="1">1v1</option>
-                    <option value="2">2v2</option>
-                    <option value="5" selected>5v5</option>
-                    <option value="7">7v7</option>
-                    <option value="11">11v11</option>
-                </select>
-            </div>
-            <div class="form-row">
-                <label>Add Bots (Fill empty)</label>
-                <input type="checkbox" id="mp-add-bots" checked />
-            </div>
-            <div class="form-row">
-                <label>Your Country</label>
-                <select id="mp-p1-team"></select>
-            </div>
-            <div class="form-row">
-                <label>Your Position</label>
-                <select id="mp-role">
+        <!-- MULTI PLAYER LOBBY (HAXBALL STYLE) -->
+        <div id="ui-mp" class="menu-container hidden" style="max-width: 900px; width: 95%;">
+            <h2 style="color:#8e44ad; margin-bottom: 20px;">Multiplayer Lobby</h2>
+            
+            <div class="form-row" style="flex-wrap: wrap; gap: 10px;">
+                <input type="text" id="mp-name" placeholder="Your Name" maxlength="12" value="Player" style="width: 130px;" />
+                <select id="mp-p1-team" style="flex-grow: 1;"></select>
+                <select id="mp-role" style="width: 140px;">
                     <option value="forward">Forward (ST)</option>
                     <option value="winger">Winger</option>
-                    <option value="midfielder" selected>Midfielder (CM)</option>
+                    <option value="midfielder" selected>Midfield (CM)</option>
                     <option value="defender">Defender (CD)</option>
-                    <option value="goalie">Goalkeeper (GK)</option>
-                    <option value="spectator">Spectator (Watch)</option>
-                </select>
-            </div>
-            <div class="form-row">
-                <label>Match Time</label>
-                <select id="mp-time-limit">
-                    <option value="300">5 Minutes</option>
-                    <option value="600">10 Minutes</option>
-                    <option value="900" selected>15 Minutes</option>
-                    <option value="1200">20 Minutes</option>
-                    <option value="2400">40 Minutes</option>
-                    <option value="5400">90 Minutes</option>
+                    <option value="goalie">Goalie (GK)</option>
                 </select>
             </div>
             
-            <div class="form-row" style="background: transparent; border: none; padding: 0; margin-top: 15px;">
-                <button id="btn-create-room" class="btn" style="margin-top: 0; width: 48%; font-size: 1rem; padding: 14px; background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);">Create Room</button>
-                <button id="btn-join-room" class="btn" style="margin-top: 0; width: 48%; font-size: 1rem; padding: 14px; background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);">Join Room</button>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 15px;">
+                <!-- Room List Table -->
+                <div style="flex: 3; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 14px; min-width: 350px; border: 1px solid rgba(255,255,255,0.08);">
+                    <h3 style="color: #3498db; margin-bottom: 10px; font-size: 1.1rem; text-align: left;">Public Rooms</h3>
+                    <div style="max-height: 250px; overflow-y: auto;">
+                        <table class="stats-table" style="width: 100%; text-align: center;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">Room Name</th>
+                                    <th>Players</th>
+                                    <th>Mode</th>
+                                    <th>Size</th>
+                                    <th>Password</th>
+                                </tr>
+                            </thead>
+                            <tbody id="room-list-tbody">
+                                <!-- Populated Dynamically via Firebase -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Create Room Form -->
+                <div style="flex: 2; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 14px; min-width: 280px; border: 1px solid rgba(255,255,255,0.08);">
+                    <h3 style="color: #9b59b6; margin-bottom: 15px; font-size: 1.1rem; text-align: left;">Create Room</h3>
+                    <div style="margin-bottom: 12px;">
+                        <input type="text" id="mp-room-name" placeholder="Room Name" style="width: 100%; box-sizing: border-box;" maxlength="20" />
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; gap: 10px;">
+                        <select id="mp-team-size" style="width: 48%; box-sizing: border-box;">
+                            <option value="1">1v1</option>
+                            <option value="2">2v2</option>
+                            <option value="5" selected>5v5</option>
+                            <option value="7">7v7</option>
+                            <option value="11">11v11</option>
+                        </select>
+                        <select id="mp-field-size" style="width: 48%; box-sizing: border-box;">
+                            <option value="tiny">Tiny Map</option>
+                            <option value="medium" selected>Med Map</option>
+                            <option value="large">Large Map</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <label style="font-size: 0.85rem; color: #ecf0f1; font-weight: bold;">Enable Password?</label>
+                        <input type="checkbox" id="mp-has-pass" />
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="text" id="mp-pass-input" placeholder="Enter Password" style="width: 100%; box-sizing: border-box; display: none;" maxlength="10" />
+                    </div>
+                    <button id="btn-create-room" class="btn" style="margin-top: 0; font-size: 1rem; padding: 14px; background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);">Create Lobby</button>
+                </div>
             </div>
-            <div class="form-row">
-                <input type="text" id="input-room-id" class="net-input" placeholder="6-Digit ID" style="width: 100%; text-align: center; font-family: monospace; font-size: 1.15rem; letter-spacing: 2px;" />
-            </div>
-            <div id="mp-status" style="text-align: center; color: #bdc3c7; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">
+            
+            <div id="mp-status" style="text-align: center; color: #bdc3c7; font-size: 0.95rem; font-weight: bold; margin-top: 15px;">
                 Ready to connect
             </div>
-            <button id="btn-back-mp" class="btn secondary">Back</button>
+            <button id="btn-back-mp" class="btn secondary" style="margin-top: 15px;">Back to Menu</button>
         </div>
     </div>
 
@@ -418,9 +434,12 @@
 
     <!-- MAIN GAME RENDER CONTAINER -->
     <div id="game-container" class="hidden">
-        <div id="top-header" class="interactive">
-            <div class="scoreboard">
-                <button id="pause-btn">||</button>
+        <div id="top-header">
+            <!-- Fullscreen Toggle left of scoreboard -->
+            <button id="hud-fullscreen-btn" class="hud-side-btn">⛶</button>
+            
+            <div class="scoreboard interactive">
+                <button id="pause-btn" class="hud-side-btn" style="width:28px; height:28px; font-size:0.8rem; border:none; background:rgba(255,255,255,0.2);">||</button>
                 <div>
                     <span id="hud-p1-flag" class="team-indicator"></span>
                     <span id="hud-p1-score">0</span>
@@ -431,11 +450,18 @@
                     <span id="hud-p2-flag" class="team-indicator"></span>
                 </div>
             </div>
+            
+            <!-- Chat Toggle right of scoreboard -->
+            <div style="position: relative;" class="interactive">
+                <button id="hud-chat-toggle-btn" class="hud-side-btn">💬</button>
+                <div id="chat-notification" class="hidden"></div>
+            </div>
         </div>
         
         <div id="game-area">
             <canvas id="gameCanvas"></canvas>
             <div id="ui-layer">
+                
                 <div id="chat-container" class="hidden">
                     <div id="chat-log"></div>
                     <div id="chat-input-row">
@@ -488,6 +514,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         let roomRef = null;
+        let roomsRefListener = null;
 
         /* =========================================================================
            LAPBALL TEAMS & CORE CONFIG
@@ -522,9 +549,16 @@
         }
 
         document.getElementById('btn-goto-sp').addEventListener('click', () => switchMenu('ui-sp'));
-        document.getElementById('btn-goto-mp').addEventListener('click', () => switchMenu('ui-mp'));
+        document.getElementById('btn-goto-mp').addEventListener('click', () => {
+            switchMenu('ui-mp');
+            loadRooms(); // Load live multiplayer rooms
+        });
         document.getElementById('btn-back-sp').addEventListener('click', () => switchMenu('ui-initial'));
-        document.getElementById('btn-back-mp').addEventListener('click', () => switchMenu('ui-initial'));
+        document.getElementById('btn-back-mp').addEventListener('click', () => {
+            if (roomsRefListener) db.ref('rooms').off('value', roomsRefListener);
+            if (roomRef && !isMultiplayer) roomRef.remove();
+            switchMenu('ui-initial');
+        });
 
         (function populateTeams() {
             const sp1 = document.getElementById('sp-p1-team');
@@ -539,7 +573,7 @@
         })();
 
         /* =========================================================================
-           MULTIPLAYER FIREBASE LOGIC
+           MULTIPLAYER HAXBALL LOBBY LOGIC
            ========================================================================= */
         let isHost = true;
         let isMultiplayer = false;
@@ -550,15 +584,78 @@
         let lastStatePush = 0;
         let lastInputPush = 0;
 
+        // Toggle Password Input Visibility
+        document.getElementById('mp-has-pass').addEventListener('change', (e) => {
+            document.getElementById('mp-pass-input').style.display = e.target.checked ? 'block' : 'none';
+        });
+
+        // Load Rooms into Table
+        function loadRooms() {
+            const tbody = document.getElementById('room-list-tbody');
+            roomsRefListener = db.ref('rooms').on('value', snap => {
+                tbody.innerHTML = '';
+                const rooms = snap.val();
+                if (!rooms) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No rooms currently available</td></tr>';
+                    return;
+                }
+                
+                for (let roomId in rooms) {
+                    let r = rooms[roomId];
+                    if (!r.meta || r.start) continue; 
+                    
+                    let tr = document.createElement('tr');
+                    tr.classList.add('room-row');
+                    tr.style.cursor = 'pointer';
+                    tr.innerHTML = `
+                        <td style="text-align:left; font-weight:bold; color:#ecf0f1;">${r.meta.name}</td>
+                        <td style="color:#f1c40f;">${r.meta.players}/${r.meta.maxPlayers}</td>
+                        <td style="color:#3498db;">${r.meta.mode}</td>
+                        <td style="text-transform:capitalize;">${r.meta.size}</td>
+                        <td style="color:${r.meta.hasPassword ? '#e74c3c' : '#2ecc71'};">${r.meta.hasPassword ? 'Yes' : 'No'}</td>
+                    `;
+                    
+                    tr.addEventListener('click', () => {
+                        if (r.meta.players >= r.meta.maxPlayers) { alert("Room is full!"); return; }
+                        if (r.meta.hasPassword) {
+                            let pass = prompt("Enter Room Password:");
+                            if (pass !== r.meta.password) { alert("Incorrect Password!"); return; }
+                        }
+                        joinRoom(roomId);
+                    });
+                    tbody.appendChild(tr);
+                }
+            });
+        }
+
+        // Host Create Room
         document.getElementById('btn-create-room').addEventListener('click', () => {
+            const roomName = document.getElementById('mp-room-name').value.trim() || `${document.getElementById('mp-name').value}'s Room`;
+            const hasPass = document.getElementById('mp-has-pass').checked;
+            const pass = document.getElementById('mp-pass-input').value.trim();
+            const modeVal = document.getElementById('mp-team-size').value;
+            const sizeVal = document.getElementById('mp-field-size').value;
+            
             const statusLabel = document.getElementById('mp-status');
             let roomId = Math.floor(100000 + Math.random() * 900000).toString();
-            document.getElementById('input-room-id').value = roomId;
-            statusLabel.textContent = "Generating Room Coordinates...";
+            
+            statusLabel.style.color = "#2ecc71";
+            statusLabel.textContent = "Creating Room...";
             
             roomRef = db.ref('rooms/' + roomId);
-            roomRef.remove().then(() => {
-                statusLabel.textContent = "Waiting for Player 2 to join...";
+            roomRef.set({
+                meta: {
+                    name: roomName,
+                    mode: `${modeVal}v${modeVal}`,
+                    size: sizeVal,
+                    hasPassword: hasPass,
+                    password: hasPass ? pass : "",
+                    players: 1,
+                    maxPlayers: 2
+                },
+                start: false
+            }).then(() => {
+                statusLabel.textContent = "Lobby active. Waiting for Player 2...";
                 document.getElementById('btn-create-room').disabled = true;
                 
                 roomRef.child('p2Config').on('value', snap => {
@@ -572,12 +669,13 @@
                         CONFIG.p1Name = document.getElementById('mp-name').value || "Host";
                         CONFIG.p1Role = document.getElementById('mp-role').value;
                         CONFIG.difficulty = "medium";
-                        CONFIG.teamSize = parseInt(document.getElementById('mp-team-size').value);
-                        CONFIG.addBots = document.getElementById('mp-add-bots').checked;
-                        CONFIG.timeLimit = parseInt(document.getElementById('mp-time-limit').value);
-                        CONFIG.fieldSize = "medium"; 
+                        CONFIG.teamSize = parseInt(modeVal);
+                        CONFIG.addBots = true;
+                        CONFIG.timeLimit = 900; // 15 Min Match
+                        CONFIG.fieldSize = sizeVal; 
                         
-                        statusLabel.textContent = "Player 2 Found! Spawning Match...";
+                        statusLabel.textContent = "Player 2 Joined! Spawning Match...";
+                        roomRef.child('meta/players').set(2);
                         roomRef.child('config').set(CONFIG);
                         roomRef.child('start').set(true);
                         
@@ -594,17 +692,20 @@
                         setTimeout(() => startMatch(true), 600);
                     }
                 });
+                roomRef.onDisconnect().remove();
             });
         });
 
-        document.getElementById('btn-join-room').addEventListener('click', () => {
-            let roomId = document.getElementById('input-room-id').value.trim();
-            if(!roomId) return;
+        // Client Join Room
+        function joinRoom(roomId) {
             const statusLabel = document.getElementById('mp-status');
-            statusLabel.textContent = "Connecting to Host...";
+            statusLabel.style.color = "#3498db";
+            statusLabel.textContent = "Connecting to Room...";
             
             roomRef = db.ref('rooms/' + roomId);
             roomRef.once('value', snap => {
+                if(!snap.exists() || snap.val().start) { alert("Room is no longer available."); return; }
+                
                 statusLabel.textContent = "Link Established! Waiting for host initialization...";
                 isHost = false;
                 isMultiplayer = true;
@@ -621,12 +722,13 @@
                             CONFIG = confSnap.val();
                             roomRef.child('state').on('value', stateSnap => { if(stateSnap.exists()) syncStateFromHost(stateSnap.val()); });
                             setupRematchListener();
+                            if (roomsRefListener) db.ref('rooms').off('value', roomsRefListener);
                             startMatch(true);
                         });
                     }
                 });
             });
-        });
+        }
 
         function handleRemoteAction(action, vector) {
             let p2Node = players.find(p => p.teamId === 2 && !p.isAI);
@@ -675,35 +777,49 @@
             }
         }
 
-        /* Chat System */
+        /* =========================================================================
+           CHAT NOTIFICATION & TOGGLE
+           ========================================================================= */
         const chatContainer = document.getElementById('chat-container');
         const chatInput = document.getElementById('chat-input');
-        let chatFadeTimeout;
-        function showChat() {
-            chatContainer.classList.add('active');
-            clearTimeout(chatFadeTimeout);
-            chatFadeTimeout = setTimeout(() => { if (document.activeElement !== chatInput) chatContainer.classList.remove('active'); }, 5000);
-        }
-        chatInput.addEventListener('focus', showChat); chatInput.addEventListener('input', showChat); chatContainer.addEventListener('click', showChat);
+        const chatToggleBtn = document.getElementById('hud-chat-toggle-btn');
+        const chatNotification = document.getElementById('chat-notification');
+
+        chatToggleBtn.addEventListener('click', () => {
+            chatContainer.classList.toggle('hidden');
+            if (!chatContainer.classList.contains('hidden')) {
+                chatNotification.classList.add('hidden'); // Hide red dot
+                chatInput.focus();
+                document.getElementById('chat-log').scrollTop = document.getElementById('chat-log').scrollHeight;
+            }
+        });
+
         document.getElementById('chat-send').addEventListener('click', () => {
             let text = chatInput.value.trim();
             if(!text || !roomRef) return;
             roomRef.child('chats').push({ sender: isHost ? CONFIG.p1Name : CONFIG.p2Name, text: text, t: Date.now() });
-            chatInput.value = ""; chatInput.blur(); showChat();
+            chatInput.value = ""; chatInput.focus(); 
         });
+        
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && isMultiplayer) {
+            if (e.key === 'Enter' && isMultiplayer && !chatContainer.classList.contains('hidden')) {
                 if (document.activeElement === chatInput) document.getElementById('chat-send').click();
-                else { chatInput.focus(); showChat(); }
+                else chatInput.focus();
             }
         });
+        
         function initChatListener() {
             roomRef.child('chats').on('child_added', snap => {
                 let msg = snap.val(); let div = document.createElement('div');
                 let color = msg.sender === CONFIG.p1Name ? '#2ecc71' : '#3498db';
                 div.innerHTML = `<strong style="color:${color}">${msg.sender}:</strong> ${msg.text}`;
                 document.getElementById('chat-log').appendChild(div);
-                document.getElementById('chat-log').scrollTop = document.getElementById('chat-log').scrollHeight; showChat();
+                document.getElementById('chat-log').scrollTop = document.getElementById('chat-log').scrollHeight; 
+                
+                // Show notification dot if chat is hidden
+                if (chatContainer.classList.contains('hidden')) {
+                    chatNotification.classList.remove('hidden');
+                }
             });
         }
 
@@ -714,7 +830,7 @@
         let CONFIG = { difficulty: "medium", p1Team: TEAMS[0], p2Team: TEAMS[1], teamSize: 5, timeLimit: 900, fieldSize: "medium", addBots: true, p1Name: "Player", p2Name: "Bot", p1Role: "forward", p2Role: "forward" };
         let map = { width: 1800, height: 1100, goalY1: 420, goalY2: 680, goalDepth: 65 };
         let players = []; let ball = null;
-        let camera = { x: 0, y: 0, zoom: 0.75 };
+        let camera = { x: 0, y: 0, zoom: 0.55 }; // CHANGED to 0.55 for higher/larger camera angle
         let gameState = "menu";
         let scores = { p1: 0, p2: 0 };
         let matchTimer = 0;
@@ -725,6 +841,16 @@
         
         let joyActive = false; let joystickTouchId = null;
         let inputVector = { x: 0, y: 0 }; let kickIntent = false;
+
+        /* FULLSCREEN EVENT */
+        document.getElementById('hud-fullscreen-btn').addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+            else if (document.exitFullscreen) document.exitFullscreen();
+        });
+        document.getElementById('fullscreen-btn').addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+            else if (document.exitFullscreen) document.exitFullscreen();
+        });
 
         /* PC CONTROLS SETUP */
         const keys = { w: false, a: false, s: false, d: false, arrowup: false, arrowleft: false, arrowdown: false, arrowright: false };
@@ -1013,7 +1139,7 @@
                 
                 // Advanced Camera Modes
                 if (activeUserControlledDisc) {
-                    camera.zoom = 0.70; 
+                    camera.zoom = 0.55; 
                     camera.x = Math.max(-600, Math.min(map.width + 600 - (canvas.width / camera.zoom), activeUserControlledDisc.x - (canvas.width / camera.zoom) / 2));
                     camera.y = Math.max(-600, Math.min(map.height + 600 - (canvas.height / camera.zoom), activeUserControlledDisc.y - (canvas.height / camera.zoom) / 2));
                 } else {
@@ -1026,7 +1152,7 @@
                             camera.x = (map.width / 2) - (canvas.width / camera.zoom) / 2;
                             camera.y = (map.height / 2) - (canvas.height / camera.zoom) / 2;
                         } else {
-                            camera.zoom = 0.70;
+                            camera.zoom = 0.55;
                             camera.x = Math.max(-600, Math.min(map.width + 600 - (canvas.width / camera.zoom), ball.x - (canvas.width / camera.zoom) / 2));
                             camera.y = Math.max(-600, Math.min(map.height + 600 - (canvas.height / camera.zoom), ball.y - (canvas.height / camera.zoom) / 2));
                         }
@@ -1273,22 +1399,27 @@
         joyZone.addEventListener('pointermove', e => { if (!joyActive || e.pointerId !== joystickTouchId) return; computeStick(e); });
         const releaseJoy = e => { if (!joyActive || e.pointerId !== joystickTouchId) return; joyActive = false; joystickTouchId = null; joyStick.style.transform = 'translate(0px, 0px)'; inputVector = { x: 0, y: 0 }; };
         joyZone.addEventListener('pointerup', releaseJoy); joyZone.addEventListener('pointercancel', releaseJoy);
+        
         function computeStick(touchData) {
-            let rect = joyZone.getBoundingClientRect(); let dX = touchData.clientX - (rect.left + rect.width / 2); let dY = touchData.clientY - (rect.top + rect.height / 2);
-            let dLen = Math.hypot(dX, dY); if (dLen > 45) { dX = (dX / dLen) * 45; dY = (dY / dLen) * 45; }
-            joyStick.style.transform = `translate(${dX}px, ${dY}px)`; inputVector.x = dX / 45; inputVector.y = dY / 45;
+            let rect = joyZone.getBoundingClientRect(); 
+            let dX = touchData.clientX - (rect.left + rect.width / 2); 
+            let dY = touchData.clientY - (rect.top + rect.height / 2);
+            
+            // Adjust radius threshold mapping based on resized boundaries
+            let maxRadius = joyZone.offsetWidth / 2 - 10;
+            let dLen = Math.hypot(dX, dY); 
+            if (dLen > maxRadius) { dX = (dX / dLen) * maxRadius; dY = (dY / dLen) * maxRadius; }
+            
+            joyStick.style.transform = `translate(${dX}px, ${dY}px)`; 
+            inputVector.x = dX / maxRadius; inputVector.y = dY / maxRadius;
         }
+        
         const attachBtn = (id, cb) => document.getElementById(id).addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); cb(); });
         attachBtn('btn-dash', triggerBurstDashMechanic); attachBtn('btn-shoot', triggerKickState); attachBtn('btn-power', chargeReleasePowerState);
 
         /* INITIALIZATIONS */
-        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight - 70; });
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight - 50; });
         window.dispatchEvent(new Event('resize'));
-
-        document.getElementById('fullscreen-btn').addEventListener('click', () => {
-            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-            else if (document.exitFullscreen) document.exitFullscreen();
-        });
 
         // Offline Match Start
         document.getElementById('btn-start-sp').addEventListener('click', () => {
@@ -1324,7 +1455,6 @@
             }
             
             if (isMultiplayer) {
-                document.getElementById('chat-container').classList.remove('hidden');
                 initChatListener();
             }
             gameState = "playing";
